@@ -15,7 +15,9 @@
  *   "mode":           "simulation",// "simulation" | "live"
  *   "status":         "running",   // "running" | "stopped" | "reset"
  *   "scenario":       "medium",    // simulation only, else null
- *   "elapsed_s":      12
+ *   "elapsed_s":      12,
+ *   "environment":    { satellite, weather, … } or null   (environmentData.js)
+ *   "environmental_indicator": { score, level, … } or null (environmentRule.js)
  * }
  * ===================================================================== */
 
@@ -94,7 +96,114 @@ function updateDashboard(sensorData) {
   $("d-mode").textContent = MODE_LABELS[sensorData.mode];
   $("d-status").textContent = STATUS_LABELS[sensorData.status];
   $("d-elapsed").textContent = formatElapsed(sensorData.elapsed_s || 0);
-  $("d-json").textContent = JSON.stringify(sensorData, null, 2);
+  $("d-envsource").textContent = sensorData.environment
+    ? `${sensorData.environment.data_source} (${sensorData.environment.satellite.observation_date})`
+    : "none connected";
+  $("d-json").textContent = JSON.stringify(sensorData, (key, value) =>
+    key === "contributions" ? undefined : value, 2); // keep the JSON view short
+
+  // 7) Environmental & satellite section + the strip above the road
+  renderEnvironment(sensorData.environment, sensorData.environmental_indicator);
+  drawStrip(sensorData.environment);
+}
+
+/* ---------------------------------------------------------------------
+ * Environmental & satellite panel (sample data today).
+ * --------------------------------------------------------------------- */
+function renderEnvironment(env, indicator) {
+  $("env-empty").hidden = !!env;
+  $("env-grid").classList.toggle("is-empty", !env);
+  const set = (id, text) => { $(id).textContent = text; };
+  const bar = (id, pct) => { $(id).style.width = env ? `${pct}%` : "0"; };
+
+  if (!env) {
+    ["e-temp", "e-hum", "e-wind", "e-sand", "e-veg", "e-bare", "e-dist", "e-score", "e-level"]
+      .forEach((id) => set(id, "—"));
+    set("e-source", "");
+    set("e-meta", "No data source connected.");
+    set("e-explain", "No environmental data available.");
+    $("e-level").dataset.level = "";
+    $("e-contrib").innerHTML = "";
+    ["e-sand-bar", "e-veg-bar", "e-bare-bar"].forEach((id) => bar(id, 0));
+    return;
+  }
+
+  const s = env.satellite;
+  const w = env.weather;
+  set("e-temp", w.temperature_c);
+  set("e-hum", w.humidity_pct);
+  set("e-wind", w.wind_speed_mps.toFixed(1));
+  set("e-sand", `${s.sand_coverage_pct}%`);
+  set("e-veg", `${s.vegetation_coverage_pct}%`);
+  set("e-bare", `${s.bare_soil_pct}%`);
+  bar("e-sand-bar", s.sand_coverage_pct);
+  bar("e-veg-bar", s.vegetation_coverage_pct);
+  bar("e-bare-bar", s.bare_soil_pct);
+  set("e-dist", s.distance_to_road_m);
+  set("e-source", `· ${s.source}`);
+  set("e-meta", `Observation ${s.observation_date} · ${s.buffer_m} m strip beside the road · ${env.location}`);
+
+  set("e-score", indicator.score);
+  set("e-level", indicator.level);
+  $("e-level").dataset.level = indicator.level;
+  set("e-explain", indicator.explanation);
+  // Small bars: how many of the 100 points each variable contributes.
+  $("e-contrib").innerHTML = indicator.contributions.map((c) => {
+    const max = CONFIG.DEMO_RULE[c.key].weight * 100;
+    return `<li><span>${c.label}</span>
+      <div class="bar"><i style="width:${(c.points / max) * 100}%"></i></div>
+      <b>${c.points.toFixed(0)}/${max}</b></li>`;
+  }).join("");
+}
+
+/* ---------------------------------------------------------------------
+ * The strip above the road in the SVG, drawn from the satellite sample:
+ *   sand field edge  → distance_to_road_m (closer = lower edge)
+ *   number of shrubs → vegetation_coverage_pct
+ *   wind arrow speed → wind_speed_mps
+ * Not to scale: 150 m or more is drawn as the top of the strip.
+ * --------------------------------------------------------------------- */
+const SHRUB_SLOTS = [
+  [205, 0.85], [110, 0.3], [170, 0.6], [240, 0.45], [300, 0.65], [360, 0.35],
+  [430, 0.7], [490, 0.4], [560, 0.6], [620, 0.5], [650, 0.25], [780, 0.7],
+];
+
+function drawStrip(env) {
+  const edgeY = env ? 118 - (Math.min(env.satellite.distance_to_road_m, 150) / 150) * 100 : 60;
+
+  // Sand field from the top of the box down to its front edge (wavy).
+  const pts = [];
+  for (let x = 800; x >= 0; x -= 20) {
+    const y = edgeY + 5 * Math.sin(x / 45) + 3 * Math.sin(x / 17 + 2);
+    pts.push(`L${x},${Math.min(118, Math.max(2, y)).toFixed(1)}`);
+  }
+  $("sand-field").setAttribute("d", `M0,0 L800,0 ${pts.join(" ")} Z`);
+
+  // Shrubs between the sand front and the road.
+  const shrubs = env ? Math.min(SHRUB_SLOTS.length,
+    Math.round((env.satellite.vegetation_coverage_pct / 25) * SHRUB_SLOTS.length)) : 0;
+  $("shrubs").innerHTML = SHRUB_SLOTS.slice(0, shrubs).map(([x, f]) => {
+    const y = edgeY + (118 - edgeY) * f;
+    return `<circle cx="${x}" cy="${y.toFixed(1)}" r="6" class="shrub"/>`;
+  }).join("");
+
+  // Distance marker from the sand front to the road edge.
+  const marker = $("distance-marker");
+  marker.style.display = env ? "" : "none";
+  if (env) {
+    $("distance-line").setAttribute("y1", edgeY.toFixed(1));
+    const label = $("distance-label");
+    label.textContent = `${env.satellite.distance_to_road_m} m`;
+    label.setAttribute("y", Math.min(112, Math.max(16, (edgeY + 118) / 2 + 5)).toFixed(1));
+  }
+
+  // Faster arrows for stronger wind (only animated while running).
+  const wind = env ? env.weather.wind_speed_mps : 5;
+  $("wind").style.setProperty("--wind-duration", `${Math.max(0.25, 3 / wind).toFixed(2)}s`);
+  $("wind-label").textContent = env ? `Wind ${wind.toFixed(1)} m/s (sample)` : "Wind";
+  $("svg-source-note").textContent = env
+    ? "Strip above road: sample satellite data"
+    : "Strip above road: no data source";
 }
 
 function riskMessage(data, hasData) {

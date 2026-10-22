@@ -44,16 +44,22 @@
             </marker>
           </defs>
 
-          <!-- Desert (sand source) -->
-          <rect x="0" y="0" width="800" height="120" fill="url(#sand-grain)"/>
-          <path d="M0,70 C120,40 220,95 360,60 C500,25 620,85 800,50 L800,0 L0,0 z" fill="#e2b06a" opacity="0.6"/>
+          <!-- Strip beside the road: bare soil, with the sand field and shrubs drawn
+               on top by dashboard.js from the satellite sample (distance, vegetation) -->
+          <rect x="0" y="0" width="800" height="120" fill="#a8916f"/>
+          <path id="sand-field" d="" fill="url(#sand-grain)"/>
+          <g id="shrubs"></g>
+          <g id="distance-marker" class="distance-marker">
+            <line id="distance-line" x1="690" y1="0" x2="690" y2="118"/>
+            <text id="distance-label" x="698" y="0" class="svg-label">—</text>
+          </g>
 
           <!-- Wind direction (animated only while running) -->
           <g id="wind" class="wind">
             <line x1="90"  y1="18" x2="90"  y2="70" marker-end="url(#arrow)"/>
             <line x1="300" y1="18" x2="300" y2="70" marker-end="url(#arrow)"/>
             <line x1="510" y1="18" x2="510" y2="70" marker-end="url(#arrow)"/>
-            <text x="560" y="40" class="svg-label light">Wind</text>
+            <text x="318" y="40" class="svg-label light" id="wind-label">Wind</text>
           </g>
 
           <!-- Road -->
@@ -80,7 +86,8 @@
 
           <text x="16" y="296" class="svg-label light">Road coverage</text>
           <text x="16" y="326" class="svg-big" id="svg-coverage">0%</text>
-          <text x="784" y="326" class="svg-label light" text-anchor="end">Sensor positions are illustrative</text>
+          <text x="784" y="300" class="svg-label light" text-anchor="end">Not to scale · sensor positions illustrative</text>
+          <text x="784" y="326" class="svg-label light" text-anchor="end" id="svg-source-note">Strip above road: sample satellite data</text>
         </svg>
 
         <!-- Shown in Live Sensor Mode while no real data is available -->
@@ -96,7 +103,7 @@
     <section class="panel status-panel" aria-label="Current readings">
       <!-- Risk -->
       <div class="status-block">
-        <h2>Risk level</h2>
+        <h2>Road risk level <span class="h2-note">(from sand on road)</span></h2>
         <div class="risk-pills" id="risk-pills">
           <span class="risk-pill" data-level="Low">LOW</span>
           <span class="risk-pill" data-level="Medium">MEDIUM</span>
@@ -107,7 +114,7 @@
 
       <!-- Sand level -->
       <div class="status-block">
-        <h2>Sand level</h2>
+        <h2>Sand on road <span class="h2-note">(simulated)</span></h2>
         <div class="big-value"><span id="sand-value">0.0</span><span class="unit">%</span></div>
         <!-- Threshold marks are added by dashboard.js from CONFIG.RISK_BANDS -->
         <div class="gauge" id="gauge" aria-hidden="true">
@@ -139,9 +146,9 @@
       <div class="control-group">
         <span class="control-label">Scenario</span>
         <div class="segmented" id="scenario-toggle" role="radiogroup" aria-label="Encroachment scenario">
-          <button type="button" role="radio" data-scenario="low" aria-checked="false">Low</button>
-          <button type="button" role="radio" data-scenario="medium" aria-checked="true">Medium</button>
-          <button type="button" role="radio" data-scenario="high" aria-checked="false">High</button>
+          <button type="button" role="radio" data-scenario="low" aria-checked="false">1 · Low</button>
+          <button type="button" role="radio" data-scenario="medium" aria-checked="true">2 · Medium</button>
+          <button type="button" role="radio" data-scenario="high" aria-checked="false">3 · High</button>
         </div>
       </div>
 
@@ -162,6 +169,54 @@
       <p class="hint" id="hint" aria-live="polite"></p>
     </section>
 
+    <!-- ============ ENVIRONMENTAL & SATELLITE DATA (sample) ============ -->
+    <section class="panel env-panel" aria-labelledby="env-title">
+      <div class="panel-head">
+        <h2 id="env-title">Environmental &amp; satellite data</h2>
+        <span class="sample-badge">Sample data · not real sensor or satellite measurements</span>
+      </div>
+
+      <p class="env-empty" id="env-empty" hidden>No environmental data source is connected in Live Sensor Mode. Satellite and weather integration is not configured yet.</p>
+
+      <div class="env-grid" id="env-grid">
+        <!-- Weather -->
+        <div class="env-col">
+          <h3>Weather</h3>
+          <div class="metrics">
+            <div class="metric"><span class="metric-label">Temperature</span><span class="metric-value"><span id="e-temp">—</span><small>°C</small></span></div>
+            <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="e-hum">—</span><small>%</small></span></div>
+            <div class="metric metric-key"><span class="metric-label">Wind speed</span><span class="metric-value"><span id="e-wind">—</span><small>m/s</small></span></div>
+          </div>
+          <p class="muted small">Temperature and humidity are context only; the demo rule does not use them.</p>
+        </div>
+
+        <!-- Satellite-derived features -->
+        <div class="env-col">
+          <h3>Satellite-derived <span class="h2-note" id="e-source">—</span></h3>
+          <div class="bar-row"><span>Sand coverage</span><div class="bar"><i id="e-sand-bar" class="sand"></i></div><b id="e-sand">—</b></div>
+          <div class="bar-row"><span>Vegetation</span><div class="bar"><i id="e-veg-bar" class="veg"></i></div><b id="e-veg">—</b></div>
+          <div class="bar-row"><span>Bare soil</span><div class="bar"><i id="e-bare-bar" class="bare"></i></div><b id="e-bare">—</b></div>
+          <div class="distance-row">
+            <span>Sand front to road</span>
+            <b><span id="e-dist">—</span> m</b>
+          </div>
+          <p class="muted small" id="e-meta">—</p>
+        </div>
+
+        <!-- Demonstration rule -->
+        <div class="env-col">
+          <h3>Demo risk indicator</h3>
+          <div class="indicator-head">
+            <span class="tag tag-lg" id="e-level" data-level="">—</span>
+            <span class="indicator-score"><b id="e-score">—</b>/100</span>
+          </div>
+          <ul class="contrib" id="e-contrib"></ul>
+          <p class="small" id="e-explain">—</p>
+          <p class="disclaimer small">Illustrative weighted rule (wind, sand coverage, distance, vegetation). Not a validated model and not the future AI prediction model.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ LIVE DATA PANEL ============ -->
     <section class="panel data-panel" aria-labelledby="data-title">
       <h2 id="data-title">Live data</h2>
@@ -172,6 +227,7 @@
         <dt>Operating mode</dt> <dd id="d-mode">Scenario Simulation</dd>
         <dt>Status</dt>         <dd id="d-status">Reset</dd>
         <dt>Elapsed</dt>        <dd id="d-elapsed">00:00</dd>
+        <dt>Env. data</dt>      <dd id="d-envsource">—</dd>
       </dl>
       <details class="json-view">
         <summary>Current data object (JSON)</summary>
@@ -209,6 +265,8 @@
        Order matters: config → logic → data sources → logging → UI → app wiring. -->
   <script src="js/config.js"></script>
   <script src="js/risk.js"></script>
+  <script src="js/environmentData.js"></script>
+  <script src="js/environmentRule.js"></script>
   <script src="js/dataSources.js"></script>
   <script src="js/logger.js"></script>
   <script src="js/dashboard.js"></script>

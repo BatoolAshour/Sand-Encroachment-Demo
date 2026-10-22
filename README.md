@@ -35,6 +35,8 @@ pro-01-dashboard/
 ├── js/
 │   ├── config.js              ALL settings: risk thresholds, scenarios, backend URL
 │   ├── risk.js                Sand level → risk level + road condition
+│   ├── environmentData.js     SAMPLE satellite + weather records, schema, provider
+│   ├── environmentRule.js     Demo multi-variable indicator + explanation
 │   ├── dataSources.js         SimulationSource (browser) and LiveSensorSource (Python)
 │   ├── logger.js              Experiment log + CSV export
 │   ├── dashboard.js           Drawing: updateDashboard(sensorData) and helpers
@@ -44,6 +46,7 @@ pro-01-dashboard/
 │   └── requirements.txt       pyserial, websockets
 └── data/
     ├── sample_reading.json          Full data object used by the dashboard
+    ├── sample_environment_scenarios.json  The 3 sample environment records (same as the JS)
     └── sample_backend_message.json  Minimal message the Python backend sends
 ```
 
@@ -94,6 +97,122 @@ data are displayed by exactly the same code.
 | `scenario` | `"low"`, `"medium"`, `"high"` (simulation only, else `null`) |
 
 You can see the live object on the page under **Live data → Current data object (JSON)**.
+
+---
+
+## 3b. Sample satellite & weather data
+
+> **SAMPLE DATA — NOT REAL SENSOR OR SATELLITE MEASUREMENTS.**
+> The values are hand-written examples for an arid road corridor in Saudi Arabia.
+> No Sentinel-2 imagery has been downloaded or analysed and no weather service is called.
+> The values are fixed, so each scenario shows the same numbers every time.
+
+Each scenario loads one record from `js/environmentData.js`:
+
+```json
+{
+  "timestamp": "2026-10-12T09:00:00Z",
+  "data_source": "sample",
+  "scenario": "medium",
+  "location": "Example road segment, Eastern Province (illustrative)",
+  "satellite": {
+    "source": "Sentinel-2",
+    "observation_date": "2026-10-11",
+    "buffer_m": 200,
+    "sand_coverage_pct": 42,
+    "vegetation_coverage_pct": 12,
+    "bare_soil_pct": 40,
+    "distance_to_road_m": 45
+  },
+  "weather": { "temperature_c": 36, "humidity_pct": 25, "wind_speed_mps": 6.8 }
+}
+```
+
+| Field | Unit | Meaning / why it matters |
+|---|---|---|
+| `timestamp` | ISO 8601 | Time the record describes (weather observation time) |
+| `data_source` | text | `sample` now; later e.g. `satellite+weather` or `python-backend` |
+| `satellite.source` | text | Sensor the features would come from (Sentinel-2) |
+| `satellite.observation_date` | YYYY-MM-DD | Date of the satellite image |
+| `satellite.buffer_m` | m | Width of the strip beside the road that the shares below describe |
+| `sand_coverage_pct` | % of strip | Loose sand near the road: more sand available to move |
+| `vegetation_coverage_pct` | % of strip | Plants hold sand in place: more vegetation, lower risk |
+| `bare_soil_pct` | % of strip | Bare soil/gravel; shown for context, not used in the rule |
+| `distance_to_road_m` | m | Gap between the nearest sand front and the road edge |
+| `weather.temperature_c` | °C | Context only |
+| `weather.humidity_pct` | % RH | Context only (dry air keeps sand loose, but this is not modelled) |
+| `weather.wind_speed_mps` | m/s | Wind is what moves sand toward the road |
+
+Sand, vegetation and bare soil are shares of the same strip; the rest up to 100 % is "other"
+(asphalt, buildings, shadow).
+
+### The three scenarios
+
+| | 1 · Low | 2 · Medium | 3 · High |
+|---|---|---|---|
+| Wind speed | 3.2 m/s | 6.8 m/s | 11.5 m/s |
+| Temperature | 31 °C | 36 °C | 41 °C |
+| Humidity | 38 % | 25 % | 14 % |
+| Sand coverage | 18 % | 42 % | 68 % |
+| Vegetation | 22 % | 12 % | 4 % |
+| Bare soil | 52 % | 40 % | 24 % |
+| Sand front to road | 120 m | 45 m | 8 m |
+| Observation date | 2026-10-04 | 2026-10-11 | 2026-10-19 |
+| Demo indicator | 17 → Low | 56 → Medium | 91 → High |
+| Road simulation | 0.6 %/s, stops at 28 % | 1.2 %/s, stops at 58 % | 2.0 %/s, up to 100 % |
+
+Selecting a scenario updates everything together: the weather cards, the satellite bars and
+distance, the strip above the road in the picture (sand front position, number of shrubs,
+wind arrow speed), the demo indicator and its explanation, and the road simulation speed.
+The scenario can be changed while running; new log rows then carry the new values.
+
+### Demo risk indicator (illustrative rule)
+
+A transparent weighted score in `js/environmentRule.js`, settings in `CONFIG.DEMO_RULE`:
+
+```
+score = 100 × (0.30 × wind + 0.30 × sand coverage + 0.25 × closeness + 0.15 × lack of vegetation)
+```
+
+Each factor is scaled to 0–1 in a straight line:
+
+| Factor | 0 at | 1 at | Weight |
+|---|---|---|---|
+| Wind speed | ≤ 3 m/s | ≥ 12 m/s | 0.30 |
+| Sand coverage | 0 % | ≥ 80 % | 0.30 |
+| Sand-to-road distance | ≥ 150 m | ≤ 5 m | 0.25 |
+| Vegetation (less = higher) | ≥ 30 % | 0 % | 0.15 |
+
+The score is classified with the same `RISK_BANDS` (0–30 Low, 31–60 Medium, 61–100 High).
+The dashboard shows each factor's points and a one-line reason.
+
+**Important:**
+- This rule only shows how several variables *could* feed a risk assessment. It is not
+  validated and it is **not** the future AI prediction model, which will be trained on real data.
+- Temperature and humidity are **not** used, and neither one alone decides road risk.
+- The main **Road risk level** (top right) is unchanged. It still comes from the simulated
+  sand on the road, so at the start of a run it shows Low even in Scenario 3. The demo
+  indicator is a separate, explanatory value.
+
+### Plugging in real data later
+
+All environment data goes through one function in `app.js`:
+
+```js
+applyEnvironmentData(record)   // validates with normalizeEnvironmentData(), then redraws
+```
+
+Today `SampleEnvironmentProvider.load(scenarioKey)` supplies the record. To use real data,
+keep the same schema and either write a new provider with a `load()` method (set
+`environmentProvider` in `app.js`) or call `applyEnvironmentData()` when data arrives:
+- **Satellite:** land-cover shares and sand-front distance computed per road segment
+  (e.g. Sentinel-2 / Dynamic World in Google Earth Engine, exported by Python).
+- **Weather:** observations or historical data (e.g. ERA5-Land) for the same date and place.
+- **Python backend:** send the record as a JSON message over the existing WebSocket.
+
+Search the code for **`[FUTURE DATA INTEGRATION POINT]`**. The dashboard reads only the
+schema, never the provider. In Live Sensor Mode no environment source is connected, so the
+panel says so and shows no values.
 
 ---
 
@@ -153,7 +272,10 @@ thresholds applies everywhere.
 ## 6. Experiment log & CSV
 
 - A row is added for each reading while the status is **running**.
-- CSV columns: `run_id, timestamp, elapsed_s, mode, scenario, sand_level, risk_level, road_condition, status`.
+- CSV columns: `run_id, timestamp, elapsed_s, mode, scenario, sand_level, risk_level, road_condition, status`,
+  then the environment columns `data_source, observation_date, temperature_c, humidity_pct, wind_speed_mps,
+  sand_coverage_pct, vegetation_coverage_pct, bare_soil_pct, distance_to_road_m, demo_indicator_score,
+  demo_indicator_level`. While `data_source` is `sample`, those values are sample data.
 - The log lives in browser memory: refreshing the page clears it. Export before closing.
 
 ---
@@ -225,6 +347,9 @@ Tested in Chromium (headless) on 22 Oct 2026:
   invalid serial line ignored, START/STOP forwarded to the serial port, CSV written by Python,
   dashboard stops and shows "not connected" when the backend is closed.
 - Phone width (390 px): no horizontal scrolling.
+- Sample data: each scenario shows its values (Low 17, Medium 56, High 91), with the same values after
+  a page reload; the road strip, shrubs and distance label update; switching scenario mid-run
+  changes the logged environment columns; Live mode shows "no environmental data source".
 
 ## 9. Known limitations
 
@@ -234,3 +359,8 @@ Tested in Chromium (headless) on 22 Oct 2026:
 - Sensor markers S1–S3 on the road picture are illustrative positions.
 - The browser log is cleared when the page is refreshed.
 - No AI map or prediction model is included (out of scope for PRO-01).
+- All satellite and weather values are illustrative sample data, not measurements. The demo rule's
+  weights and ranges are chosen for explanation, not calibrated.
+- The road simulation speed is set per scenario; it is not calculated from the environmental values.
+- `data/sample_environment_scenarios.json` is a copy of the JS data (the page cannot read JSON files
+  when opened by double-click); keep them in sync if you edit values.

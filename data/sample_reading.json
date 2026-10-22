@@ -6,5 +6,30 @@
   "mode": "simulation",
   "status": "running",
   "scenario": "medium",
-  "elapsed_s": 38
+  "elapsed_s": 38,
+  "environment": {
+    "timestamp": "2026-10-12T09:00:00Z",
+    "data_source": "sample",
+    "scenario": "medium",
+    "location": "Example road segment, Eastern Province (illustrative)",
+    "satellite": {
+      "source": "Sentinel-2",
+      "observation_date": "2026-10-11",
+      "buffer_m": 200,
+      "sand_coverage_pct": 42,
+      "vegetation_coverage_pct": 12,
+      "bare_soil_pct": 40,
+      "distance_to_road_m": 45
+    },
+    "weather": {
+      "temperature_c": 36,
+      "humidity_pct": 25,
+      "wind_speed_mps": 6.8
+    }
+  },
+  "environmental_indicator": {
+    "score": 56,
+    "level": "Medium",
+    "explanation": "Medium (score 56, band 31–60 %): wind 6.8 m/s, sand coverage 42%, sand front 45 m from the road, vegetation 12%. Moderate wind and a closer sand front mean sand could reach the road edge."
+  }
 }

@@ -16,7 +16,11 @@ const state = {
   elapsedMs: 0,                     // running time of the current run
   runningSince: null,               // Date.now() when the last Start happened
   lastReading: null,                // last raw reading { timestamp, sand_level }
+  environment: null,                // satellite + weather record (see environmentData.js)
 };
+
+// [FUTURE DATA INTEGRATION POINT] swap this for a real provider with the same load().
+const environmentProvider = SampleEnvironmentProvider;
 
 const logger = new ExperimentLogger();
 
@@ -53,7 +57,43 @@ function buildSensorData() {
     status: state.status,
     scenario: state.mode === "simulation" ? state.scenario : null,
     elapsed_s: elapsedSeconds(),
+    environment: state.environment,                                  // null when no source
+    environmental_indicator: assessEnvironmentalIndicator(state.environment), // demo rule only
   };
+}
+
+// Flat row for the log / CSV (nested objects become simple columns).
+function toLogEntry(data) {
+  const env = data.environment;
+  const ind = data.environmental_indicator;
+  return {
+    run_id: state.runId,
+    ...data,
+    data_source: env ? env.data_source : "",
+    observation_date: env ? env.satellite.observation_date : "",
+    temperature_c: env ? env.weather.temperature_c : "",
+    humidity_pct: env ? env.weather.humidity_pct : "",
+    wind_speed_mps: env ? env.weather.wind_speed_mps : "",
+    sand_coverage_pct: env ? env.satellite.sand_coverage_pct : "",
+    vegetation_coverage_pct: env ? env.satellite.vegetation_coverage_pct : "",
+    bare_soil_pct: env ? env.satellite.bare_soil_pct : "",
+    distance_to_road_m: env ? env.satellite.distance_to_road_m : "",
+    demo_indicator_score: ind ? ind.score : "",
+    demo_indicator_level: ind ? ind.level : "",
+  };
+}
+
+
+// ---------- Environmental + satellite data ----------
+// Single entry point for environment records from ANY provider
+// (sample today; satellite pipeline, weather data or Python backend later).
+function applyEnvironmentData(raw) {
+  state.environment = raw ? normalizeEnvironmentData(raw) : null;
+  refresh();
+}
+
+function loadScenarioEnvironment() {
+  applyEnvironmentData(state.mode === "simulation" ? environmentProvider.load(state.scenario) : null);
 }
 
 function refresh() {
@@ -68,7 +108,7 @@ function handleReading(raw) {
   state.lastReading = raw;
   if (state.mode === "live") showLiveNotice(false); // real data is arriving
   const data = buildSensorData();
-  logger.add({ run_id: state.runId, ...data });
+  logger.add(toLogEntry(data));
   updateDashboard(data);
   renderLog(logger);
 
@@ -165,7 +205,8 @@ function setMode(mode) {
   } else {
     showLiveNoticeForIdleLive();
   }
-  refresh();
+  // Sample environment data belongs to the simulation only; live mode has no source yet.
+  loadScenarioEnvironment();
 }
 
 function showLiveNoticeForIdleLive() {
@@ -185,7 +226,7 @@ function setScenario(key) {
   state.scenario = key;
   sources.simulation.setScenario(key); // takes effect on the next tick, even while running
   setHint(CONFIG.SCENARIOS[key].description);
-  refresh();
+  loadScenarioEnvironment(); // weather + satellite values, road strip and demo indicator update together
 }
 
 
@@ -237,6 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 1000);
 
   sources.simulation.setScenario(state.scenario);
-  refresh();
+  loadScenarioEnvironment();
   renderLog(logger);
 });

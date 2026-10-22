@@ -40,10 +40,12 @@ const CONFIG = {
    * Each tick adds rate × a random factor between 0.6 and 1.4,
    * so the curve looks natural but always moves upward.
    * ------------------------------------------------------------------- */
+  // Each scenario also has a matching SAMPLE environmental record with the
+  // same key in environmentData.js (wind, sand coverage, distance, …).
   SCENARIOS: {
-    low:    { label: "Low",    rate: 0.6, maxLevel: 28,  description: "Light wind: sand settles slowly at the road edge." },
-    medium: { label: "Medium", rate: 1.2, maxLevel: 58,  description: "Moderate wind: sand spreads onto the lane." },
-    high:   { label: "High",   rate: 2.0, maxLevel: 100, description: "Strong wind: sand can cover the whole road." },
+    low:    { label: "Low",    rate: 0.6, maxLevel: 28,  description: "Scenario 1: light wind, sand far from the road, more vegetation." },
+    medium: { label: "Medium", rate: 1.2, maxLevel: 58,  description: "Scenario 2: moderate wind, sand front closer to the road." },
+    high:   { label: "High",   rate: 2.0, maxLevel: 100, description: "Scenario 3: strong wind, sand right next to the road, little vegetation." },
   },
   DEFAULT_SCENARIO: "medium",
 
@@ -55,6 +57,25 @@ const CONFIG = {
    * Example when ready:  "ws://localhost:8765"
    * ------------------------------------------------------------------- */
   LIVE_BACKEND_URL: null,
+
+  /* -------------------------------------------------------------------
+   * Demonstration rule for the environmental indicator (environmentRule.js).
+   * ILLUSTRATIVE ONLY: a transparent weighted score, NOT a validated model
+   * and NOT the future AI prediction model.
+   *
+   * Each factor is turned into 0–1 by straight-line scaling between
+   * `low` (factor = 0) and `high` (factor = 1). For distance and vegetation
+   * `low` is the larger number, because MORE distance / vegetation means
+   * LESS risk. Weights must add up to 1. The 0–100 score is then classified
+   * with the same RISK_BANDS as the road sand level.
+   * Temperature and humidity are shown for context but are NOT used here.
+   * ------------------------------------------------------------------- */
+  DEMO_RULE: {
+    wind_speed_mps:          { weight: 0.30, low: 3,   high: 12, label: "Wind speed" },
+    sand_coverage_pct:       { weight: 0.30, low: 0,   high: 80, label: "Sand coverage" },
+    distance_to_road_m:      { weight: 0.25, low: 150, high: 5,  label: "Sand-to-road distance" },
+    vegetation_coverage_pct: { weight: 0.15, low: 30,  high: 0,  label: "Low vegetation" },
+  },
 
   // Number of rows shown in the on-screen log table (the CSV keeps all rows).
   LOG_ROWS_VISIBLE: 8,

@@ -13,6 +13,10 @@
 const CSV_COLUMNS = [
   "run_id", "timestamp", "elapsed_s", "mode", "scenario",
   "sand_level", "risk_level", "road_condition", "status",
+  // Environmental / satellite columns: SAMPLE values while data_source = "sample"
+  "data_source", "observation_date", "temperature_c", "humidity_pct", "wind_speed_mps",
+  "sand_coverage_pct", "vegetation_coverage_pct", "bare_soil_pct", "distance_to_road_m",
+  "demo_indicator_score", "demo_indicator_level",
 ];
 
 class ExperimentLogger {
