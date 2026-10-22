@@ -28,7 +28,7 @@ Then open <http://localhost:8000>.
 ## 2. Folder structure
 
 ```
-pro-01-dashboard/
+Sand-Encroachment-Demo/
 ├── index.html                 Page layout (all dashboard sections)
 ├── css/
 │   └── styles.css             Colours, layout, responsive rules
