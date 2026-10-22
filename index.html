@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sand Encroachment Monitoring System</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="topbar">
+    <div>
+      <h1>Sand Encroachment Monitoring System</h1>
+      <p class="subtitle">Digital prototype demonstration: simulates the sand-and-road box experiment before the physical hardware is tested.</p>
+    </div>
+    <!-- Shows where data comes from. Never says "connected" unless the backend really is. -->
+    <div class="connection" id="connection" data-state="simulation">
+      <span class="dot"></span>
+      <span id="connection-text">Simulation: no hardware required</span>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- ============ ROAD SIMULATION (central visual) ============ -->
+    <section class="panel sim-panel" aria-labelledby="sim-title">
+      <div class="panel-head">
+        <h2 id="sim-title">Road simulation</h2>
+        <span class="muted small" id="sim-scenario-note">Scenario: Medium</span>
+      </div>
+
+      <div class="road-wrap">
+        <svg id="road-svg" viewBox="0 0 800 340" role="img" aria-label="Top view of the prototype box: desert sand above a road, with sand moving onto the road">
+          <defs>
+            <pattern id="sand-grain" width="14" height="14" patternUnits="userSpaceOnUse">
+              <rect width="14" height="14" fill="#d9a35b"/>
+              <circle cx="3" cy="4" r="1" fill="#c48a43"/>
+              <circle cx="10" cy="10" r="1" fill="#e8bd7c"/>
+              <circle cx="11" cy="2" r="0.8" fill="#c48a43"/>
+            </pattern>
+            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#f5e6cc"/>
+            </marker>
+          </defs>
+
+          <!-- Desert (sand source) -->
+          <rect x="0" y="0" width="800" height="120" fill="url(#sand-grain)"/>
+          <path d="M0,70 C120,40 220,95 360,60 C500,25 620,85 800,50 L800,0 L0,0 z" fill="#e2b06a" opacity="0.6"/>
+
+          <!-- Wind direction (animated only while running) -->
+          <g id="wind" class="wind">
+            <line x1="90"  y1="18" x2="90"  y2="70" marker-end="url(#arrow)"/>
+            <line x1="300" y1="18" x2="300" y2="70" marker-end="url(#arrow)"/>
+            <line x1="510" y1="18" x2="510" y2="70" marker-end="url(#arrow)"/>
+            <text x="560" y="40" class="svg-label light">Wind</text>
+          </g>
+
+          <!-- Road -->
+          <rect x="0" y="120" width="800" height="130" fill="#2b3036"/>
+          <line x1="0" y1="128" x2="800" y2="128" stroke="#e9e9e9" stroke-width="3"/>
+          <line x1="0" y1="242" x2="800" y2="242" stroke="#e9e9e9" stroke-width="3"/>
+          <line x1="0" y1="185" x2="800" y2="185" stroke="#f2c230" stroke-width="4" stroke-dasharray="34 26"/>
+
+          <!-- Sand on the road: shape is redrawn by dashboard.js from sand_level -->
+          <path id="sand-on-road" d="" fill="#c98f4a" stroke="#9c6a2e" stroke-width="2"/>
+          <!-- Original road edge, kept visible above the sand -->
+          <line x1="0" y1="120" x2="800" y2="120" stroke="#ffffff" stroke-width="2" stroke-dasharray="10 8" opacity="0.8"/>
+          <text x="16" y="112" class="svg-label">Road edge</text>
+
+          <!-- Ground below the road -->
+          <rect x="0" y="250" width="800" height="90" fill="#7b6a52"/>
+
+          <!-- Illustrative sensor positions across the road (S1 edge → S3 far lane) -->
+          <g id="sensors">
+            <g class="sensor" data-depth="20"><circle cx="740" cy="146" r="9"/><text x="700" y="151" class="svg-label">S1</text></g>
+            <g class="sensor" data-depth="50"><circle cx="740" cy="185" r="9"/><text x="700" y="190" class="svg-label">S2</text></g>
+            <g class="sensor" data-depth="85"><circle cx="740" cy="230" r="9"/><text x="700" y="235" class="svg-label">S3</text></g>
+          </g>
+
+          <text x="16" y="296" class="svg-label light">Road coverage</text>
+          <text x="16" y="326" class="svg-big" id="svg-coverage">0%</text>
+          <text x="784" y="326" class="svg-label light" text-anchor="end">Sensor positions are illustrative</text>
+        </svg>
+
+        <!-- Shown in Live Sensor Mode while no real data is available -->
+        <div class="live-notice" id="live-notice" hidden>
+          <strong id="live-notice-title">Hardware not connected</strong>
+          <p id="live-notice-text">Python/Arduino integration is not configured yet, so no sensor readings are shown.</p>
+          <p class="small">To connect later: run <code>python/bridge.py</code> and set <code>LIVE_BACKEND_URL</code> in <code>js/config.js</code>. See README.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATUS COLUMN ============ -->
+    <section class="panel status-panel" aria-label="Current readings">
+      <!-- Risk -->
+      <div class="status-block">
+        <h2>Risk level</h2>
+        <div class="risk-pills" id="risk-pills">
+          <span class="risk-pill" data-level="Low">LOW</span>
+          <span class="risk-pill" data-level="Medium">MEDIUM</span>
+          <span class="risk-pill" data-level="High">HIGH</span>
+        </div>
+        <p class="risk-message" id="risk-message">Waiting for the experiment to start.</p>
+      </div>
+
+      <!-- Sand level -->
+      <div class="status-block">
+        <h2>Sand level</h2>
+        <div class="big-value"><span id="sand-value">0.0</span><span class="unit">%</span></div>
+        <!-- Threshold marks are added by dashboard.js from CONFIG.RISK_BANDS -->
+        <div class="gauge" id="gauge" aria-hidden="true">
+          <div class="gauge-fill" id="gauge-fill"></div>
+        </div>
+        <div class="gauge-legend" id="gauge-legend"></div>
+      </div>
+
+      <!-- Road condition -->
+      <div class="status-block">
+        <h2>Road condition</h2>
+        <p class="condition" id="road-condition">Clear</p>
+        <p class="muted small" id="road-condition-detail">No significant sand on the road surface.</p>
+      </div>
+
+      <p class="disclaimer small">Risk thresholds are prototype demonstration values, not a scientifically validated road-safety prediction.</p>
+    </section>
+
+    <!-- ============ CONTROLS ============ -->
+    <section class="panel controls" aria-label="Experiment controls">
+      <div class="control-group">
+        <span class="control-label">Sensor mode</span>
+        <div class="segmented" id="mode-toggle" role="radiogroup" aria-label="Sensor mode">
+          <button type="button" role="radio" data-mode="simulation" aria-checked="true">Scenario Simulation</button>
+          <button type="button" role="radio" data-mode="live" aria-checked="false">Live Sensor</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Scenario</span>
+        <div class="segmented" id="scenario-toggle" role="radiogroup" aria-label="Encroachment scenario">
+          <button type="button" role="radio" data-scenario="low" aria-checked="false">Low</button>
+          <button type="button" role="radio" data-scenario="medium" aria-checked="true">Medium</button>
+          <button type="button" role="radio" data-scenario="high" aria-checked="false">High</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Experiment</span>
+        <div class="buttons">
+          <button type="button" class="btn btn-start" id="btn-start">&#9654; Start</button>
+          <button type="button" class="btn btn-stop" id="btn-stop" disabled>&#10073;&#10073; Stop</button>
+          <button type="button" class="btn btn-reset" id="btn-reset">&#8635; Reset</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Status</span>
+        <span class="status-badge" id="status-badge" data-status="reset">Reset</span>
+      </div>
+
+      <p class="hint" id="hint" aria-live="polite"></p>
+    </section>
+
+    <!-- ============ LIVE DATA PANEL ============ -->
+    <section class="panel data-panel" aria-labelledby="data-title">
+      <h2 id="data-title">Live data</h2>
+      <dl class="data-list">
+        <dt>Timestamp</dt>      <dd id="d-timestamp">—</dd>
+        <dt>Sand level</dt>     <dd id="d-sand">—</dd>
+        <dt>Risk</dt>           <dd id="d-risk">—</dd>
+        <dt>Operating mode</dt> <dd id="d-mode">Scenario Simulation</dd>
+        <dt>Status</dt>         <dd id="d-status">Reset</dd>
+        <dt>Elapsed</dt>        <dd id="d-elapsed">00:00</dd>
+      </dl>
+      <details class="json-view">
+        <summary>Current data object (JSON)</summary>
+        <pre id="d-json">{}</pre>
+      </details>
+    </section>
+
+    <!-- ============ EXPERIMENT LOG ============ -->
+    <section class="panel log-panel" aria-labelledby="log-title">
+      <div class="panel-head">
+        <h2 id="log-title">Experiment log <span class="muted small" id="log-count">(0 readings)</span></h2>
+        <div class="buttons">
+          <button type="button" class="btn btn-ghost" id="btn-export" disabled>Export CSV</button>
+          <button type="button" class="btn btn-ghost" id="btn-clear-log" disabled>Clear log</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Run</th><th>Time</th><th>Mode</th><th>Scenario</th><th>Sand %</th><th>Risk</th></tr>
+          </thead>
+          <tbody id="log-body">
+            <tr class="empty"><td colspan="6">No readings yet. Press Start to record data.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer small">
+    PRO-01 · Digital HTML demo &amp; dashboard · Prototype demonstration only. Live Sensor Mode shows real data only when the Python backend is connected.
+  </footer>
+
+  <!-- Plain scripts (no modules) so the page also works by double-clicking index.html.
+       Order matters: config → logic → data sources → logging → UI → app wiring. -->
+  <script src="js/config.js"></script>
+  <script src="js/risk.js"></script>
+  <script src="js/dataSources.js"></script>
+  <script src="js/logger.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
