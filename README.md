@@ -18,7 +18,7 @@ No installation, no internet, no backend needed.
 
 **Option B (local server, recommended once the Python backend exists):**
 ```bash
-cd pro-01-dashboard
+cd Sand-Encroachment-Demo
 python -m http.server 8000
 ```
 Then open <http://localhost:8000>.
