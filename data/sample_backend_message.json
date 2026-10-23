@@ -1,4 +1,8 @@
 {
-  "timestamp": "2026-10-22T12:00:00+00:00",
-  "sand_level": 45
+  "timestamp": "2026-10-23T11:00:00Z",
+  "sensor_id": "sand_01",
+  "value": 2.1,
+  "unit": "cm",
+  "source": "live",
+  "status": "ok"
 }

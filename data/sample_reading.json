@@ -1,12 +1,34 @@
 {
-  "timestamp": "2026-10-22T12:00:00.000Z",
-  "sand_level": 45,
-  "risk_level": "Medium",
-  "road_condition": "Partially covered",
+  "received_at": "2026-10-23T11:00:00.000Z",
   "mode": "simulation",
   "status": "running",
-  "scenario": "medium",
-  "elapsed_s": 38,
+  "scenario_id": "medium",
+  "scenario_label": "Medium",
+  "data_origin": "data/shared_mock_data.json",
+  "readings": [
+    {
+      "timestamp": "2026-10-22T12:00:00Z",
+      "sensor_id": "wind_01",
+      "value": 6.0,
+      "unit": "m/s",
+      "source": "scenario",
+      "status": "ok"
+    },
+    {
+      "timestamp": "2026-10-22T12:00:00Z",
+      "sensor_id": "sand_01",
+      "value": 2.5,
+      "unit": "cm",
+      "source": "scenario",
+      "status": "ok"
+    }
+  ],
+  "sand_depth_cm": 2.5,
+  "wind_speed_mps": 6.0,
+  "risk_level": "Medium",
+  "risk_basis": "preset label (shared mock data)",
+  "road_condition": "Partially covered",
+  "elapsed_s": 12,
   "environment": {
     "timestamp": "2026-10-12T09:00:00Z",
     "data_source": "sample",
@@ -30,6 +52,6 @@
   "environmental_indicator": {
     "score": 56,
     "level": "Medium",
-    "explanation": "Medium (score 56, band 31–60 %): wind 6.8 m/s, sand coverage 42%, sand front 45 m from the road, vegetation 12%. Moderate wind and a closer sand front mean sand could reach the road edge."
+    "explanation": "Medium (score 56, band 31–60): wind 6.8 m/s, sand coverage 42%, sand front 45 m from the road, vegetation 12%. Moderate wind and a closer sand front mean sand could reach the road edge."
   }
 }

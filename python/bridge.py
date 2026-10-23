@@ -11,11 +11,15 @@ What it does when the hardware exists:
 
 1. Reads one line per reading from the Arduino serial port.
    Accepted line formats (choose one in the Arduino sketch):
-       45                       -> plain number, sand level in %
-       {"sand_level": 45}       -> JSON
-2. Sends each reading to every open dashboard as JSON:
-       {"timestamp": "2026-10-22T12:00:00+00:00", "sand_level": 45}
-3. Saves every reading to a CSV file.
+       sand_01,2.4                              -> sensor_id,value
+       {"sensor_id": "wind_01", "value": 6.1}   -> JSON
+2. Sends each reading to every open dashboard in the SAME six-field contract
+   as data/shared_mock_data.json (v1.0):
+       {"timestamp": "2026-10-22T12:00:00Z", "sensor_id": "sand_01",
+        "value": 2.4, "unit": "cm", "source": "live", "status": "ok"}
+   NOTE: v1.0 only defines source "scenario". "live" is a PROPOSAL for real
+   sensors and must be agreed with PRO-06 (v2.0) before use.
+3. Saves every reading to a CSV file (same six columns).
 4. Forwards dashboard commands (start / stop / reset) to the Arduino as
    text lines "START", "STOP", "RESET" (e.g. to switch the fan on/off).
 
@@ -43,8 +47,9 @@ except ImportError:
     sys.exit("Missing packages. Run:  pip install -r requirements.txt")
 
 
-# TODO (PRO-06 / hardware team): confirm baud rate and how the sensor value
-# is converted to a 0–100 % sand level inside the Arduino sketch.
+# TODO (PRO-06 / hardware team): confirm baud rate and the sensor calibration
+# (sand_01 depth in cm, wind_01 speed in m/s) inside the Arduino sketch.
+# PRO-06 owns the real backend; this file is a reference template only.
 BAUD_RATE = 9600
 WS_HOST = "localhost"
 WS_PORT = 8765
@@ -52,19 +57,28 @@ WS_PORT = 8765
 clients = set()
 
 
+# Provisional sensor IDs and units from the shared data contract v1.0.
+UNITS = {"wind_01": "m/s", "sand_01": "cm"}
+CONTRACT_FIELDS = ["timestamp", "sensor_id", "value", "unit", "source", "status"]
+
+
 def parse_line(line: str):
-    """Turn one serial line into a sand level (0–100), or None if invalid."""
+    """Turn one serial line into (sensor_id, value), or None if invalid."""
     line = line.strip()
     if not line:
         return None
     try:
-        value = json.loads(line)
-        if isinstance(value, dict):
-            value = value.get("sand_level")
-        level = float(value)
-    except (ValueError, TypeError):
+        if line.startswith("{"):
+            data = json.loads(line)
+            sensor_id, value = data.get("sensor_id"), float(data.get("value"))
+        else:
+            sensor_id, value = line.split(",", 1)
+            sensor_id, value = sensor_id.strip(), float(value)
+    except (ValueError, TypeError, AttributeError):
         return None
-    return max(0.0, min(100.0, level))
+    if sensor_id not in UNITS:
+        return None
+    return sensor_id, value
 
 
 async def broadcast(message: dict):
@@ -99,14 +113,19 @@ async def read_serial_forever(ser, log_writer, log_file):
     while True:
         # readline() blocks, so run it in a worker thread.
         raw = await loop.run_in_executor(None, ser.readline)
-        level = parse_line(raw.decode(errors="ignore"))
-        if level is None:
+        parsed = parse_line(raw.decode(errors="ignore"))
+        if parsed is None:
             continue
+        sensor_id, value = parsed
         reading = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "sand_level": round(level, 1),
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "sensor_id": sensor_id,
+            "value": value,
+            "unit": UNITS[sensor_id],
+            "source": "live",   # proposal, not in v1.0 (see note at top)
+            "status": "ok",
         }
-        log_writer.writerow([reading["timestamp"], reading["sand_level"]])
+        log_writer.writerow([reading[f] for f in CONTRACT_FIELDS])
         log_file.flush()
         await broadcast(reading)
 
@@ -119,7 +138,7 @@ async def main(port: str):
     log_path = Path("logs") / f"experiment_{datetime.now():%Y%m%d_%H%M%S}.csv"
     with open(log_path, "w", newline="") as log_file:
         writer = csv.writer(log_file)
-        writer.writerow(["timestamp", "sand_level"])
+        writer.writerow(CONTRACT_FIELDS)
         print(f"Logging to {log_path}")
 
         async with websockets.serve(lambda ws: handle_client(ws, ser), WS_HOST, WS_PORT):
