@@ -1,106 +1,139 @@
 # Sand Encroachment Monitoring System — PRO-01 Digital Demo & Dashboard
 
-A browser-based simulation of the physical prototype (a road inside a box with sand,
-sensors and a wind mechanism). It shows how sand encroachment builds up on the road
-and how the risk level changes, **before** the hardware is tested.
+A browser dashboard for the physical prototype (a road inside a box with sand, a wind fan
+and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
+ready to show real sensor readings later.
 
-> Prototype demonstration only. The risk thresholds are example values, not a
-> scientifically validated road-safety prediction.
+> **Scenario / Demo only.** All values are fixed and illustrative, not real sensor readings.
+> Risk levels are preset display labels, not outputs of a trained model or validated thresholds.
 
 ---
 
 ## 1. How to run it
 
-No installation, no internet, no backend needed.
-
-**Option A (simplest):** double-click `index.html`. It opens in any modern browser
-(Chrome, Edge, Firefox, Safari).
-
-**Option B (local server, recommended once the Python backend exists):**
+**Recommended (reads `data/shared_mock_data.json` directly):**
 ```bash
-cd pro-01-dashboard
-python -m http.server 8000
+cd Sand-Encroachment-Demo        # the project folder
+python3 -m http.server 8000
 ```
 Then open <http://localhost:8000>.
+
+**Quick (no terminal):** double-click `index.html`. Browsers block reading JSON files this way,
+so the page uses `js/sharedMockData.js`, an exact generated copy of the same file. The banner
+under the title always says which one was loaded.
+
+No internet or backend is needed either way.
 
 ---
 
 ## 2. Folder structure
 
 ```
-pro-01-dashboard/
-├── index.html                 Page layout (all dashboard sections)
-├── css/
-│   └── styles.css             Colours, layout, responsive rules
+├── index.html                 Page layout
+├── css/styles.css             Colours, layout, responsive rules
 ├── js/
-│   ├── config.js              ALL settings: risk thresholds, scenarios, backend URL
-│   ├── risk.js                Sand level → risk level + road condition
-│   ├── environmentData.js     SAMPLE satellite + weather records, schema, provider
+│   ├── config.js              Settings: data file path, API/WebSocket URLs, display scale
+│   ├── sharedMockData.js      GENERATED copy of shared_mock_data.json (do not edit)
+│   ├── scenarioData.js        Loads + validates the shared file; future PRO-06 API provider
+│   ├── dataSources.js         ScenarioSource (Scenario / Demo) and LiveSensorSource
+│   ├── risk.js                Risk label helpers, road condition, live thresholds
+│   ├── environmentData.js     Field data SAMPLE (satellite + weather)
 │   ├── environmentRule.js     Demo multi-variable indicator + explanation
-│   ├── dataSources.js         SimulationSource (browser) and LiveSensorSource (Python)
 │   ├── logger.js              Experiment log + CSV export
 │   ├── dashboard.js           Drawing: updateDashboard(sensorData) and helpers
 │   └── app.js                 State + button logic; connects everything
 ├── python/
-│   ├── bridge.py              Future Arduino → WebSocket bridge (template)
-│   └── requirements.txt       pyserial, websockets
+│   ├── sync_shared_data.py    Regenerates / checks js/sharedMockData.js
+│   ├── bridge.py              Reference Arduino → WebSocket template (PRO-06 owns the backend)
+│   └── requirements.txt
 └── data/
-    ├── sample_reading.json          Full data object used by the dashboard
-    ├── sample_environment_scenarios.json  The 3 sample environment records (same as the JS)
-    └── sample_backend_message.json  Minimal message the Python backend sends
+    ├── shared_mock_data.json          CANONICAL shared mock data v1.0 (unchanged)
+    ├── SHARED_MOCK_DATA_README.txt    Rules that came with it
+    ├── sample_reading.json            Example of the dashboard's data object
+    ├── sample_environment_scenarios.json  Field data sample (copy of the JS)
+    └── sample_backend_message.json    Example live message (contract format)
 ```
 
 ### How the files work together
 
 ```
- [Start/Stop/Reset, mode, scenario]          app.js  (state + controls)
-                 │                               │
-                 ▼                               ▼
-       dataSources.js  ── raw reading ──►  handleReading()
-   (Simulation or Live)   {timestamp,            │
-                           sand_level}           ├─► risk.js     classify risk + road condition
-                                                 ├─► logger.js   add a log row
-                                                 └─► dashboard.js updateDashboard(sensorData)
+ shared_mock_data.json ─► scenarioData.js (load + validate)
+                                  │
+ [Start/Stop/Reset, scenario] ─► app.js ◄── dataSources.js (Scenario or Live readings)
+                                  │
+                                  ├─► logger.js     one CSV row per reading
+                                  └─► dashboard.js  updateDashboard(sensorData)
 ```
-
-1. **app.js** keeps the state (`mode`, `status`, `scenario`, `runId`, last reading) and listens to the buttons.
-2. The active **data source** produces raw readings `{ timestamp, sand_level }`.
-3. **app.js** builds one complete data object (adds risk, road condition, mode, status…).
-4. That object is saved by **logger.js** and drawn by **`updateDashboard(sensorData)`** in dashboard.js.
-
-Because everything goes through `updateDashboard(sensorData)`, simulated data and real sensor
-data are displayed by exactly the same code.
 
 ---
 
-## 3. The data object
+## 3. Shared mock data v1.0 (PRO-01 + PRO-06)
 
-```json
-{
-  "timestamp": "2026-10-22T12:00:00.000Z",
-  "sand_level": 45,
-  "risk_level": "Medium",
-  "road_condition": "Partially covered",
-  "mode": "simulation",
-  "status": "running",
-  "scenario": "medium",
-  "elapsed_s": 38
-}
-```
+`data/shared_mock_data.json` is used **unchanged** (checked byte-for-byte against the file
+the team shared). Scenario IDs: `low`, `medium`, `high`.
 
-| Field | Values |
+| Scenario | wind_01 | sand_01 | Preset risk_level |
+|---|---|---|---|
+| Low | 2.0 m/s | 0.5 cm | low |
+| Medium | 6.0 m/s | 2.5 cm | medium |
+| High | 11.0 m/s | 5.0 cm | high |
+
+Every reading has exactly six contract fields:
+
+| Field | Meaning |
 |---|---|
-| `sand_level` | 0–100 (%), or `null` in Live mode when no reading exists |
-| `risk_level` | `"Low"`, `"Medium"`, `"High"` (or `null`) |
-| `mode` | `"simulation"` or `"live"` |
-| `status` | `"running"`, `"stopped"`, `"reset"` |
-| `scenario` | `"low"`, `"medium"`, `"high"` (simulation only, else `null`) |
+| `timestamp` | ISO 8601 UTC time of the reading |
+| `sensor_id` | `wind_01` or `sand_01` (provisional IDs) |
+| `value` | number |
+| `unit` | `m/s` for wind_01, `cm` for sand_01 |
+| `source` | `scenario` (not live) |
+| `status` | `ok` |
 
-You can see the live object on the page under **Live data → Current data object (JSON)**.
+**Validation:** on load the dashboard checks the schema version, the three scenario IDs, the six
+fields, the units per sensor, `source` and `status`. If anything is wrong it shows the list of
+problems and plays nothing. It never fixes, converts or guesses values.
+
+**Keeping the embedded copy identical:** after the team agrees a new file version, replace
+`data/shared_mock_data.json` and run:
+```bash
+python3 python/sync_shared_data.py          # regenerate js/sharedMockData.js
+python3 python/sync_shared_data.py --check  # confirm they match
+```
+Also update `CONFIG.SHARED_DATA.schemaVersion` in `js/config.js`.
 
 ---
 
-## 3b. Sample satellite & weather data
+## 4. How Scenario / Demo works
+
+| Control | What it does |
+|---|---|
+| **Scenario** | Low / Medium / High (labels come from the file). Shows the scenario's values in the hint line and updates the field data sample. |
+| **Start** | Starts a run (new run number after Reset). The selected scenario's readings are delivered now and again every 2 s (`TICK_INTERVAL_MS`), the same way the dashboard will later poll the PRO-06 API. After Stop it shows **Resume**. |
+| **Stop** | Pauses delivery. Values stay on screen. |
+| **Reset** | Clears readings, risk and timer; status = Reset. The log is kept (use **Clear log**). |
+| **Changing scenario while running** | The new scenario's readings appear immediately. |
+| **Sensor mode** | Scenario / Demo ↔ Live Sensor. Switching resets the run so demo and real values never mix. |
+
+What is shown for a scenario:
+- **Sand depth (sand_01)** and **Wind speed (wind_01)**: the exact file values.
+- **Risk level**: the preset `risk_level` from the file (Low / Medium / High pills).
+- **Road condition**: text linked to that label (`ROAD_CONDITION_BY_RISK` in config.js).
+- **Road picture**: sand layer drawn to `depth ÷ SAND_DEPTH_DISPLAY_MAX_CM` (6 cm) of the road. It
+  eases to the new depth over about 2.5 s. This is only animation: the numbers always show the
+  exact reading, and no in-between values are logged.
+- **Live data panel**: the readings table shows the six contract fields exactly as received.
+
+Nothing in Scenario / Demo is random or generated in the browser.
+
+### Risk in Live Sensor Mode
+
+Real readings have no preset label. `CONFIG.SAND_DEPTH_THRESHOLDS_CM` is `null` because no cm
+thresholds have been agreed, so live risk shows **Not classified**. When the team agrees values,
+set e.g. `{ lowMax: 1.0, mediumMax: 3.0 }` (example numbers only).
+
+---
+
+## 5. Field data sample (satellite + weather)
 
 > **SAMPLE DATA — NOT REAL SENSOR OR SATELLITE MEASUREMENTS.**
 > The values are hand-written examples for an arid road corridor in Saudi Arabia.
@@ -159,12 +192,13 @@ Sand, vegetation and bare soil are shares of the same strip; the rest up to 100 
 | Sand front to road | 120 m | 45 m | 8 m |
 | Observation date | 2026-10-04 | 2026-10-11 | 2026-10-19 |
 | Demo indicator | 17 → Low | 56 → Medium | 91 → High |
-| Road simulation | 0.6 %/s, stops at 28 % | 1.2 %/s, stops at 58 % | 2.0 %/s, up to 100 % |
 
-Selecting a scenario updates everything together: the weather cards, the satellite bars and
-distance, the strip above the road in the picture (sand front position, number of shrubs,
-wind arrow speed), the demo indicator and its explanation, and the road simulation speed.
-The scenario can be changed while running; new log rows then carry the new values.
+This is a separate, illustrative dataset about a real road corridor (future satellite and
+weather inputs). It is **not** part of `shared_mock_data.json`. Its "field wind" (e.g. 6.8 m/s)
+is intentionally different from the prototype's `wind_01` sensor (e.g. 6.0 m/s): one is
+weather at a real road, the other is the fan wind inside the box. Selecting a scenario updates
+the weather cards, satellite bars, the strip above the road (sand front, shrubs) and the demo
+indicator together with the shared readings.
 
 ### Demo risk indicator (illustrative rule)
 
@@ -183,16 +217,15 @@ Each factor is scaled to 0–1 in a straight line:
 | Sand-to-road distance | ≥ 150 m | ≤ 5 m | 0.25 |
 | Vegetation (less = higher) | ≥ 30 % | 0 % | 0.15 |
 
-The score is classified with the same `RISK_BANDS` (0–30 Low, 31–60 Medium, 61–100 High).
+The score is classified with `RISK_BANDS` (0–30 Low, 31–60 Medium, 61–100 High).
 The dashboard shows each factor's points and a one-line reason.
 
 **Important:**
 - This rule only shows how several variables *could* feed a risk assessment. It is not
   validated and it is **not** the future AI prediction model, which will be trained on real data.
 - Temperature and humidity are **not** used, and neither one alone decides road risk.
-- The main **Road risk level** (top right) is unchanged. It still comes from the simulated
-  sand on the road, so at the start of a run it shows Low even in Scenario 3. The demo
-  indicator is a separate, explanatory value.
+- The main **Risk level** (top right) is the preset label from `shared_mock_data.json`.
+  The demo indicator is a separate, explanatory value.
 
 ### Plugging in real data later
 
@@ -216,151 +249,76 @@ panel says so and shows no values.
 
 ---
 
-## 4. How the simulation works
-
-- Every second (`TICK_INTERVAL_MS`) the simulation adds sand:
-  `new level = old level + rate × random(0.6 … 1.4)`.
-- Each scenario has a `rate` and a `maxLevel` (in `config.js`):
-
-| Scenario | Rate per second | Stops at | Ends in |
-|---|---|---|---|
-| Low | 0.6 % | 28 % | Low risk |
-| Medium | 1.2 % | 58 % | Medium risk |
-| High | 2.0 % | 100 % | High risk (road blocked) |
-
-- Sand never decreases by itself, so the curve only goes up.
-- Changing the scenario while running changes the speed immediately; the current level is kept.
-- At 100 % the run stops automatically.
-
-### Controls
-
-| Control | What it does |
-|---|---|
-| **Start** | Starts a run (new run number after Reset). After Stop it shows **Resume** and continues the same run. |
-| **Stop** | Pauses. Values stay on screen. |
-| **Reset** | Sand level back to 0 %, risk back to Low, status = Reset, timer = 00:00. **The log is kept** so you can still export it. |
-| **Scenario** | Low / Medium / High encroachment speed. Disabled in Live mode. |
-| **Sensor mode** | Scenario Simulation ↔ Live Sensor. Switching mode resets the current run so simulated and real values are never mixed. |
-| **Export CSV** | Downloads every logged reading. |
-| **Clear log** | Empties the log. |
-
----
-
-## 5. How the risk level is calculated
-
-In `js/config.js`:
-
-```js
-RISK_BANDS: [
-  { level: "Low",    max: 30  },   // 0 – 30 %
-  { level: "Medium", max: 60  },   // 31 – 60 %
-  { level: "High",   max: 100 },   // 61 – 100 %
-],
-```
-
-`classifyRisk()` in `risk.js` rounds the sand level to a whole number and returns the first
-band whose `max` is not exceeded (30.4 % → 30 → Low; 30.5 % → 31 → Medium).
-
-To change the thresholds, edit the `max` values only. The gauge marks and the legend update
-automatically. Road condition labels work the same way (`ROAD_CONDITIONS`).
-
-The risk is always calculated in the browser, including for real sensor data, so one set of
-thresholds applies everywhere.
-
 ---
 
 ## 6. Experiment log & CSV
 
-- A row is added for each reading while the status is **running**.
-- CSV columns: `run_id, timestamp, elapsed_s, mode, scenario, sand_level, risk_level, road_condition, status`,
-  then the environment columns `data_source, observation_date, temperature_c, humidity_pct, wind_speed_mps,
-  sand_coverage_pct, vegetation_coverage_pct, bare_soil_pct, distance_to_road_m, demo_indicator_score,
-  demo_indicator_level`. While `data_source` is `sample`, those values are sample data.
+- One row per reading while the status is **running**.
+- CSV columns: `run_id, received_at, mode, scenario_id, preset_risk_level`, then the six contract
+  fields `timestamp, sensor_id, value, unit, source, status` exactly as received.
+- `timestamp` is the reading's own time from the file (2026-10-22T12:00:00Z for all scenarios);
+  `received_at` is when the dashboard received it.
 - The log lives in browser memory: refreshing the page clears it. Export before closing.
 
 ---
 
-## 7. Live Sensor Mode and the future Python backend
+## 7. Connecting the Python backend (PRO-06) and real sensors
 
-**Current state:** not connected. `LIVE_BACKEND_URL` is `null`, so Live mode shows
-"Hardware not connected / Python/Arduino integration is not configured yet" and pressing
-Start does nothing. **No readings are ever invented in Live mode.**
-
-### Planned data path
-
+### A. Scenarios from the PRO-06 API (planned)
+The shared README asks PRO-06 to serve the same file, e.g. `GET /api/scenarios/<scenario_id>`
+(not agreed yet; the existing random `/api/readings` must not be used for this display).
+When it exists, set in `js/config.js`:
+```js
+SCENARIO_API_BASE: "http://localhost:5000",
 ```
-Sand sensors → Arduino/ESP32 → USB serial → python/bridge.py → WebSocket → dashboard
-                                                   └→ logs/experiment_<time>.csv
-```
+The dashboard then fetches the selected scenario from the API, validates it against the same
+contract and shows "PRO-06 API" as the data origin. If the API is down or breaks the contract,
+the run stops and the problem is shown. (The backend must allow the request with CORS.)
 
-### Steps to connect (when the hardware is ready)
-
-1. **Arduino sketch**: print one line per reading on serial at 9600 baud, either
-   `45` or `{"sand_level": 45}` (sand level already converted to 0–100 %).
-   Optionally react to the lines `START`, `STOP`, `RESET` sent back by Python
-   (e.g. to switch the fan on/off).
-2. **Python**:
-   ```bash
-   cd python
-   pip install -r requirements.txt
-   python bridge.py --port COM3          # or /dev/ttyUSB0, /dev/cu.usbserial-xxxx
-   ```
-3. **Dashboard**: in `js/config.js` set
-   ```js
-   LIVE_BACKEND_URL: "ws://localhost:8765",
-   ```
-4. Open the dashboard, choose **Live Sensor**, press **Start**. The header shows
-   "Live: Python backend connected" only when the WebSocket is really open.
-
-### Message contract
-
-Backend → dashboard (one JSON per reading):
+### B. Live sensors over WebSocket
+`CONFIG.LIVE_BACKEND_URL` is `null`, so Live mode shows "Hardware not connected / not configured"
+and never invents readings. When a backend sends readings, it must use the six-field contract,
+one reading or a list per message:
 ```json
-{ "timestamp": "2026-10-22T12:00:00+00:00", "sand_level": 45 }
+{ "timestamp": "2026-10-23T11:00:00Z", "sensor_id": "sand_01", "value": 2.1,
+  "unit": "cm", "source": "live", "status": "ok" }
 ```
-Dashboard → backend (optional commands):
-```json
-{ "command": "start" }   { "command": "stop" }   { "command": "reset" }
-```
-Invalid messages are ignored. If the connection drops, the run stops and the header shows
-"Live: not connected".
+Readings with wrong fields, unknown sensor IDs or wrong units are ignored.
+**Open point:** v1.0 only defines `source: "scenario"`. `"live"` is a proposal to agree with
+PRO-06 in a v2.0 file.
 
-### Where the integration code is
+`python/bridge.py` is a reference template (Arduino lines `sand_01,2.4` or
+`{"sensor_id": "wind_01", "value": 6.1}` → WebSocket + CSV in contract format). PRO-06 owns
+the real backend.
 
-Search the code for **`[PYTHON / ARDUINO INTEGRATION POINT]`**:
-- `js/config.js` → `LIVE_BACKEND_URL`
-- `js/dataSources.js` → `LiveSensorSource` class (connection, message parsing, commands)
-- `js/app.js` → where the live source is created
-- `python/bridge.py` → serial reading, WebSocket server, CSV log (TODO for baud rate / calibration)
+Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRATION POINT]`**.
 
 ---
 
 ## 8. What was tested
 
-Tested in Chromium (headless) on 22 Oct 2026:
-- Start, Stop (values hold), Resume (same run number), Reset (0 %, Low, Reset, 00:00, log kept).
-- Low / Medium / High scenarios and switching scenario while running.
-- Risk boundaries: 0, 30 → Low; 30.5, 31, 60 → Medium; 61, 100 → High.
-- CSV export (header + one row per reading, correct run numbers), Clear log.
-- Live mode without backend: "not configured" message, Start refused, no data shown.
-- Live mode with `bridge.py` and a **virtual** serial port (no real Arduino): readings shown,
-  invalid serial line ignored, START/STOP forwarded to the serial port, CSV written by Python,
-  dashboard stops and shows "not connected" when the backend is closed.
+Tested in Chromium on 23 Oct 2026:
+- Shared file loaded from `data/shared_mock_data.json` via a local server, and from the embedded
+  copy when opened by double-click; banner shows the origin; `--check` confirms the copy matches.
+- Low / Medium / High show exactly 2.0 / 6.0 / 11.0 m/s, 0.5 / 2.5 / 5.0 cm and the preset labels;
+  switching scenario mid-run updates readings, field data and demo indicator together.
+- Start, Stop (values hold, no new rows), Resume (same run), Reset (cleared, log kept).
+- CSV export: one row per reading with the six contract fields unchanged.
+- Future API path with a local test server: valid scenario shown; a reading with a wrong unit is
+  rejected and the run stops with the reason.
+- Live mode without backend: "not configured", Start refused. With `bridge.py` and a virtual serial
+  port: contract readings shown, invalid line ignored, risk "Not classified", START/STOP forwarded.
 - Phone width (390 px): no horizontal scrolling.
-- Sample data: each scenario shows its values (Low 17, Medium 56, High 91), with the same values after
-  a page reload; the road strip, shrubs and distance label update; switching scenario mid-run
-  changes the logged environment columns; Live mode shows "no environmental data source".
 
 ## 9. Known limitations
 
-- `bridge.py` has **not** been tested with a real Arduino/ESP32; baud rate and the
-  sensor-to-percentage conversion still need to be agreed with the hardware part (PRO-06).
-- The simulation is a simple visual model (rate + randomness), not a physical sand-transport model.
-- Sensor markers S1–S3 on the road picture are illustrative positions.
+- All values are illustrative. The shared file has one reading per sensor per scenario, so a run
+  repeats the same values; it does not show sand building up over time.
+- The road picture scale (6 cm = full road) is a display choice, not part of the shared data.
+- No cm thresholds are agreed, so live readings are not classified.
+- The PRO-06 scenario endpoint and a `source` value for live readings are not agreed yet.
+- `bridge.py` has not been tested with a real Arduino/ESP32.
+- The field data sample (satellite + weather) is separate illustrative data; its wind differs
+  from `wind_01` on purpose. The demo rule's weights are not calibrated.
 - The browser log is cleared when the page is refreshed.
 - No AI map or prediction model is included (out of scope for PRO-01).
-- All satellite and weather values are illustrative sample data, not measurements. The demo rule's
-  weights and ranges are chosen for explanation, not calibrated.
-- The road simulation speed is set per scenario; it is not calculated from the environmental values.
-- `data/sample_environment_scenarios.json` is a copy of the JS data (the page cannot read JSON files
-  when opened by double-click); keep them in sync if you edit values.
