@@ -2,19 +2,25 @@
  * dashboard.js — everything that DRAWS the page.
  *
  * The key function is updateDashboard(sensorData): every visible reading
- * (road picture, sand level, gauge, risk, road condition, status, mode,
- * data panel) is refreshed from that ONE data object. It does not matter
- * whether the object came from the simulation or from real sensors.
+ * (road picture, sand depth, wind, risk, road condition, status, mode,
+ * data panel, field data) is refreshed from that ONE data object. It does
+ * not matter whether it came from the shared scenario file, the future
+ * PRO-06 API or real sensors.
  *
  * sensorData format (see data/sample_reading.json):
  * {
- *   "timestamp":      "2026-10-22T12:00:00.000Z",
- *   "sand_level":     45,          // 0–100, or null when there is no data
- *   "risk_level":     "Medium",    // "Low" | "Medium" | "High" | null
+ *   "received_at":    "2026-10-23T11:00:00.000Z",  // when the readings arrived
+ *   "mode":           "simulation",  // "simulation" (Scenario / Demo) | "live"
+ *   "status":         "running",     // "running" | "stopped" | "reset"
+ *   "scenario_id":    "medium",      // null in live mode
+ *   "scenario_label": "Medium",
+ *   "data_origin":    "data/shared_mock_data.json",
+ *   "readings":       [ six-field contract readings, unchanged ],
+ *   "sand_depth_cm":  2.5,           // sand_01 value, or null
+ *   "wind_speed_mps": 6.0,           // wind_01 value, or null
+ *   "risk_level":     "Medium",      // preset label (scenario) or null
+ *   "risk_basis":     "preset label (shared mock data)",
  *   "road_condition": "Partially covered",
- *   "mode":           "simulation",// "simulation" | "live"
- *   "status":         "running",   // "running" | "stopped" | "reset"
- *   "scenario":       "medium",    // simulation only, else null
  *   "elapsed_s":      12,
  *   "environment":    { satellite, weather, … } or null   (environmentData.js)
  *   "environmental_indicator": { score, level, … } or null (environmentRule.js)
@@ -23,88 +29,140 @@
 
 const $ = (id) => document.getElementById(id);
 
-const MODE_LABELS = { simulation: "Scenario Simulation", live: "Live Sensor" };
+const MODE_LABELS = { simulation: "Scenario / Demo", live: "Live Sensor" };
 const STATUS_LABELS = { running: "Running", stopped: "Stopped", reset: "Reset" };
 
 // Road geometry inside the SVG (must match index.html).
 const ROAD_TOP = 120;
 const ROAD_HEIGHT = 130;
 
-// Called once on page load: builds the gauge marks and legend from config.
 function initDashboard() {
+  drawSandOnRoad(0);
+}
+
+// After loading: show which shared file is used, or list its problems.
+function showDataStatus(provider) {
+  const box = $("data-status");
+  if (provider.problems.length) {
+    box.dataset.state = "error";
+    box.innerHTML = `<strong>Shared mock data could not be used</strong> (nothing was changed or guessed):
+      <ul>${provider.problems.map((p) => `<li>${p}</li>`).join("")}</ul>`;
+    return;
+  }
+  const d = provider.data;
+  box.dataset.state = "ok";
+  box.innerHTML = `<strong>Scenario / Demo data:</strong> ${d.dataset_id} · schema v${d.schema_version} ·
+    loaded from <code>${provider.origin}</code> · fixed illustrative values, not real sensor readings`;
+}
+
+// Scenario buttons + depth gauge marks use the labels and values from the file.
+function labelScenarioButtons(scenarios) {
+  scenarios.forEach((sc) => {
+    const btn = document.querySelector(`#scenario-toggle [data-scenario="${sc.scenario_id}"]`);
+    if (btn) btn.textContent = sc.label;
+  });
   const gauge = $("gauge");
   const legend = $("gauge-legend");
-  CONFIG.RISK_BANDS.forEach((band, i) => {
-    if (i < CONFIG.RISK_BANDS.length - 1) {
-      const mark = document.createElement("span");
-      mark.className = "gauge-mark";
-      mark.style.left = `${band.max}%`;
-      gauge.appendChild(mark);
-    }
+  gauge.querySelectorAll(".gauge-mark").forEach((m) => m.remove());
+  legend.innerHTML = "";
+  scenarios.forEach((sc) => {
+    const sand = readingsBySensor(sc.readings).sand_01;
+    if (!sand) return;
+    const mark = document.createElement("span");
+    mark.className = "gauge-mark";
+    mark.style.left = `${depthFraction(sand.value) * 100}%`;
+    gauge.appendChild(mark);
     const item = document.createElement("span");
-    item.innerHTML = `<i class="swatch" data-level="${band.level}"></i>${band.level} ${describeBandRange(i)}`;
+    item.innerHTML = `<i class="swatch" data-level="${displayRisk(sc.risk_level)}"></i>${sc.label} ${sand.value} cm`;
     legend.appendChild(item);
   });
+}
+
+// sand_01 depth → 0–1 share of the drawing / gauge (display scale only).
+function depthFraction(cm) {
+  return Math.min(1, Math.max(0, (cm || 0) / CONFIG.SAND_DEPTH_DISPLAY_MAX_CM));
 }
 
 /* ---------------------------------------------------------------------
  * updateDashboard — single entry point for all readings.
  * --------------------------------------------------------------------- */
 function updateDashboard(sensorData) {
-  const hasData = typeof sensorData.sand_level === "number";
-  const level = hasData ? sensorData.sand_level : 0;
-  const risk = hasData ? sensorData.risk_level : null;
+  const sand = sensorData.sand_depth_cm;
+  const wind = sensorData.wind_speed_mps;
+  const hasSand = typeof sand === "number";
+  const risk = sensorData.risk_level;
 
-  // 1) Road picture
-  drawSandOnRoad(level);
-  $("svg-coverage").textContent = hasData ? `${Math.round(level)}%` : "no data";
-  document.querySelectorAll("#sensors .sensor").forEach((sensor) => {
-    sensor.classList.toggle("covered", hasData && level >= Number(sensor.dataset.depth));
-  });
-  $("wind").classList.toggle("active", sensorData.status === "running" && sensorData.mode === "simulation");
+  // 1) Road picture (the drawing eases to the new depth; numbers are exact)
+  animateRoadTo(hasSand ? depthFraction(sand) : 0);
+  $("svg-coverage").textContent = hasSand ? `${sand} cm` : "—";
+  $("sensor-sand").classList.toggle("covered", hasSand && sand > 0);
+  $("sensor-wind").classList.toggle("covered", typeof wind === "number");
+  $("wind").classList.toggle("active", sensorData.status === "running" && typeof wind === "number");
 
-  // 2) Sand level + gauge
-  $("sand-value").textContent = hasData ? level.toFixed(1) : "--";
+  // 2) Sensor readings + gauge
+  $("sand-value").textContent = hasSand ? sand : "--";
+  $("wind-value").textContent = typeof wind === "number" ? wind : "--";
   const fill = $("gauge-fill");
-  fill.style.width = `${level}%`;
+  fill.style.width = `${depthFraction(hasSand ? sand : 0) * 100}%`;
   fill.dataset.level = risk || "";
 
   // 3) Risk indicator
   document.querySelectorAll("#risk-pills .risk-pill").forEach((pill) => {
     pill.classList.toggle("active", pill.dataset.level === risk);
   });
-  $("risk-message").textContent = riskMessage(sensorData, hasData);
+  $("risk-basis").textContent = sensorData.mode === "live"
+    ? "(sand_01 thresholds)" : "(preset scenario label)";
+  $("risk-message").textContent = riskMessage(sensorData);
   $("risk-message").dataset.level = risk || "";
 
-  // 4) Road condition
-  const condition = hasData ? describeRoadCondition(level) : null;
-  $("road-condition").textContent = condition ? condition.label : "Unknown";
-  $("road-condition-detail").textContent = condition
-    ? condition.detail
-    : "No sensor data available.";
+  // 4) Road condition (follows the risk label)
+  const condition = roadConditionForRisk(risk);
+  $("road-condition").textContent = condition ? condition.label : "—";
+  $("road-condition-detail").textContent = condition ? condition.detail
+    : sensorData.mode === "live" && hasSand ? "Not classified: no sand_01 thresholds agreed yet."
+    : "Press Start to play the selected scenario.";
 
-  // 5) Status + mode
+  // 5) Status
   const badge = $("status-badge");
   badge.dataset.status = sensorData.status;
   badge.textContent = STATUS_LABELS[sensorData.status];
 
   // 6) Compact live data panel
-  $("d-timestamp").textContent = sensorData.timestamp ? formatTime(sensorData.timestamp) : "—";
-  $("d-sand").textContent = hasData ? `${level.toFixed(1)} %` : "—";
-  $("d-risk").textContent = risk || "—";
+  $("d-timestamp").textContent = sensorData.received_at ? formatTime(sensorData.received_at) : "—";
+  $("d-scenario").textContent = sensorData.scenario_label ? `${sensorData.scenario_label} (${sensorData.scenario_id})` : "—";
+  $("d-risk").textContent = risk || (hasSand ? "Not classified" : "—");
   $("d-risk").dataset.level = risk || "";
   $("d-mode").textContent = MODE_LABELS[sensorData.mode];
   $("d-status").textContent = STATUS_LABELS[sensorData.status];
   $("d-elapsed").textContent = formatElapsed(sensorData.elapsed_s || 0);
+  $("d-origin").textContent = sensorData.data_origin || "—";
   $("d-envsource").textContent = sensorData.environment
     ? `${sensorData.environment.data_source} (${sensorData.environment.satellite.observation_date})`
     : "none connected";
+  renderReadingsTable(sensorData.readings);
   $("d-json").textContent = JSON.stringify(sensorData, (key, value) =>
     key === "contributions" ? undefined : value, 2); // keep the JSON view short
 
-  // 7) Environmental & satellite section + the strip above the road
+  // 7) Field data section + the strip above the road
   renderEnvironment(sensorData.environment, sensorData.environmental_indicator);
   drawStrip(sensorData.environment);
+
+  // 8) Wind arrows follow wind_01 when there is a reading
+  if (typeof wind === "number") {
+    $("wind").style.setProperty("--wind-duration", `${Math.max(0.25, 3 / Math.max(wind, 0.5)).toFixed(2)}s`);
+    $("wind-label").textContent = `wind_01 ${wind} m/s`;
+  }
+}
+
+function renderReadingsTable(readings) {
+  const body = $("d-readings");
+  if (!readings || readings.length === 0) {
+    body.innerHTML = '<tr class="empty"><td colspan="6">No readings yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = readings.map((r) => `
+    <tr><td>${r.sensor_id}</td><td>${r.value}</td><td>${r.unit}</td>
+        <td>${r.source}</td><td>${r.status}</td><td>${r.timestamp}</td></tr>`).join("");
 }
 
 /* ---------------------------------------------------------------------
@@ -206,27 +264,42 @@ function drawStrip(env) {
     : "Strip above road: no data source";
 }
 
-function riskMessage(data, hasData) {
-  if (!hasData) return "No live sensor data.";
-  if (!data.timestamp) return "Waiting for the experiment to start.";
-  const pct = `${Math.round(data.sand_level)}%`;
-  switch (data.risk_level) {
-    case "Low":    return `Sand mostly off the road (${pct} coverage).`;
-    case "Medium": return `Sand reaching the lane: ${pct} coverage.`;
-    case "High":   return `Road heavily affected: ${pct} coverage.`;
-    default:       return "";
+function riskMessage(data) {
+  const sand = data.sand_depth_cm;
+  if (typeof sand !== "number") {
+    return data.mode === "live" ? "No live sensor data." : "Waiting for the experiment to start.";
   }
+  if (!data.risk_level) return `sand_01 ${sand} cm · not classified (no thresholds agreed yet).`;
+  return `Preset label "${data.risk_level.toLowerCase()}" for scenario ${data.scenario_label}: sand_01 ${sand} cm.`;
 }
 
-// Draws the sand layer on the road. 0 % = no sand, 100 % = whole road covered.
+// Eases the drawing from its current depth to the target over ~2.5 s.
+// Purely visual: the numbers on screen always show the exact reading.
+let roadFraction = 0;
+let roadAnimation = null;
+function animateRoadTo(target) {
+  cancelAnimationFrame(roadAnimation);
+  const from = roadFraction;
+  if (Math.abs(target - from) < 0.001) return drawSandOnRoad(target);
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / 2500);
+    drawSandOnRoad(from + (target - from) * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) roadAnimation = requestAnimationFrame(step);
+  };
+  roadAnimation = requestAnimationFrame(step);
+}
+
+// Draws the sand layer on the road. 0 = no sand, 1 = whole road covered.
 // The wavy edge uses fixed sine waves, so the shape does not flicker.
-function drawSandOnRoad(level) {
+function drawSandOnRoad(fraction) {
+  roadFraction = fraction;
   const path = $("sand-on-road");
-  if (level <= 0) {
+  if (fraction <= 0) {
     path.setAttribute("d", "");
     return;
   }
-  const depth = (level / 100) * ROAD_HEIGHT;
+  const depth = fraction * ROAD_HEIGHT;
   const wave = Math.min(10, depth / 3, ROAD_HEIGHT - depth); // flat when fully covered
   const points = [];
   for (let x = 800; x >= 0; x -= 20) {
@@ -261,17 +334,19 @@ function renderLog(logger) {
 
   const body = $("log-body");
   if (logger.count === 0) {
-    body.innerHTML = '<tr class="empty"><td colspan="6">No readings yet. Press Start to record data.</td></tr>';
+    body.innerHTML = '<tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>';
     return;
   }
   body.innerHTML = logger.latest(CONFIG.LOG_ROWS_VISIBLE).map((e) => `
     <tr>
       <td>#${e.run_id}</td>
-      <td>${formatTime(e.timestamp)}</td>
-      <td>${MODE_LABELS[e.mode]}</td>
-      <td>${e.scenario ? CONFIG.SCENARIOS[e.scenario].label : "—"}</td>
-      <td>${e.sand_level.toFixed(1)}</td>
-      <td><span class="tag" data-level="${e.risk_level}">${e.risk_level}</span></td>
+      <td>${formatTime(e.received_at)}</td>
+      <td>${e.scenario_id || "live"}</td>
+      <td>${e.sensor_id}</td>
+      <td>${e.value}</td>
+      <td>${e.unit}</td>
+      <td>${e.source}</td>
+      <td>${e.preset_risk_level ? `<span class="tag" data-level="${displayRisk(e.preset_risk_level)}">${e.preset_risk_level}</span>` : "—"}</td>
     </tr>`).join("");
 }
 

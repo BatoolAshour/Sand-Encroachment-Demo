@@ -17,9 +17,12 @@
     <!-- Shows where data comes from. Never says "connected" unless the backend really is. -->
     <div class="connection" id="connection" data-state="simulation">
       <span class="dot"></span>
-      <span id="connection-text">Simulation: no hardware required</span>
+      <span id="connection-text">Scenario / Demo: no hardware required</span>
     </div>
   </header>
+
+  <!-- Which shared data file is in use, or what is wrong with it -->
+  <div class="data-status" id="data-status" data-state="loading">Loading shared mock data…</div>
 
   <main class="layout">
 
@@ -27,7 +30,7 @@
     <section class="panel sim-panel" aria-labelledby="sim-title">
       <div class="panel-head">
         <h2 id="sim-title">Road simulation</h2>
-        <span class="muted small" id="sim-scenario-note">Scenario: Medium</span>
+        <span class="muted small" id="sim-scenario-note">Scenario / Demo</span>
       </div>
 
       <div class="road-wrap">
@@ -68,7 +71,7 @@
           <line x1="0" y1="242" x2="800" y2="242" stroke="#e9e9e9" stroke-width="3"/>
           <line x1="0" y1="185" x2="800" y2="185" stroke="#f2c230" stroke-width="4" stroke-dasharray="34 26"/>
 
-          <!-- Sand on the road: shape is redrawn by dashboard.js from sand_level -->
+          <!-- Sand on the road: drawn by dashboard.js from the sand_01 depth (cm) -->
           <path id="sand-on-road" d="" fill="#c98f4a" stroke="#9c6a2e" stroke-width="2"/>
           <!-- Original road edge, kept visible above the sand -->
           <line x1="0" y1="120" x2="800" y2="120" stroke="#ffffff" stroke-width="2" stroke-dasharray="10 8" opacity="0.8"/>
@@ -77,15 +80,14 @@
           <!-- Ground below the road -->
           <rect x="0" y="250" width="800" height="90" fill="#7b6a52"/>
 
-          <!-- Illustrative sensor positions across the road (S1 edge → S3 far lane) -->
+          <!-- Provisional sensors from the shared data contract (positions illustrative) -->
           <g id="sensors">
-            <g class="sensor" data-depth="20"><circle cx="740" cy="146" r="9"/><text x="700" y="151" class="svg-label">S1</text></g>
-            <g class="sensor" data-depth="50"><circle cx="740" cy="185" r="9"/><text x="700" y="190" class="svg-label">S2</text></g>
-            <g class="sensor" data-depth="85"><circle cx="740" cy="230" r="9"/><text x="700" y="235" class="svg-label">S3</text></g>
+            <g class="sensor" id="sensor-sand"><circle cx="740" cy="160" r="9"/><text x="672" y="165" class="svg-label">sand_01</text></g>
+            <g class="sensor" id="sensor-wind"><circle cx="770" cy="22" r="9"/><text x="702" y="27" class="svg-label">wind_01</text></g>
           </g>
 
-          <text x="16" y="296" class="svg-label light">Road coverage</text>
-          <text x="16" y="326" class="svg-big" id="svg-coverage">0%</text>
+          <text x="16" y="296" class="svg-label light">sand_01 depth</text>
+          <text x="16" y="326" class="svg-big" id="svg-coverage">—</text>
           <text x="784" y="300" class="svg-label light" text-anchor="end">Not to scale · sensor positions illustrative</text>
           <text x="784" y="326" class="svg-label light" text-anchor="end" id="svg-source-note">Strip above road: sample satellite data</text>
         </svg>
@@ -103,7 +105,7 @@
     <section class="panel status-panel" aria-label="Current readings">
       <!-- Risk -->
       <div class="status-block">
-        <h2>Road risk level <span class="h2-note">(from sand on road)</span></h2>
+        <h2>Risk level <span class="h2-note" id="risk-basis">(preset scenario label)</span></h2>
         <div class="risk-pills" id="risk-pills">
           <span class="risk-pill" data-level="Low">LOW</span>
           <span class="risk-pill" data-level="Medium">MEDIUM</span>
@@ -112,11 +114,19 @@
         <p class="risk-message" id="risk-message">Waiting for the experiment to start.</p>
       </div>
 
-      <!-- Sand level -->
+      <!-- Sensor readings (wind_01 + sand_01) -->
       <div class="status-block">
-        <h2>Sand on road <span class="h2-note">(simulated)</span></h2>
-        <div class="big-value"><span id="sand-value">0.0</span><span class="unit">%</span></div>
-        <!-- Threshold marks are added by dashboard.js from CONFIG.RISK_BANDS -->
+        <div class="reading-pair">
+          <div>
+            <h2>Sand depth <span class="h2-note">sand_01</span></h2>
+            <div class="big-value"><span id="sand-value">--</span><span class="unit">cm</span></div>
+          </div>
+          <div>
+            <h2>Wind speed <span class="h2-note">wind_01</span></h2>
+            <div class="big-value"><span id="wind-value">--</span><span class="unit">m/s</span></div>
+          </div>
+        </div>
+        <!-- Scenario depth marks are added by dashboard.js from the shared data -->
         <div class="gauge" id="gauge" aria-hidden="true">
           <div class="gauge-fill" id="gauge-fill"></div>
         </div>
@@ -126,11 +136,11 @@
       <!-- Road condition -->
       <div class="status-block">
         <h2>Road condition</h2>
-        <p class="condition" id="road-condition">Clear</p>
-        <p class="muted small" id="road-condition-detail">No significant sand on the road surface.</p>
+        <p class="condition" id="road-condition">—</p>
+        <p class="muted small" id="road-condition-detail">Press Start to play the selected scenario.</p>
       </div>
 
-      <p class="disclaimer small">Risk thresholds are prototype demonstration values, not a scientifically validated road-safety prediction.</p>
+      <p class="disclaimer small">Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds.</p>
     </section>
 
     <!-- ============ CONTROLS ============ -->
@@ -138,7 +148,7 @@
       <div class="control-group">
         <span class="control-label">Sensor mode</span>
         <div class="segmented" id="mode-toggle" role="radiogroup" aria-label="Sensor mode">
-          <button type="button" role="radio" data-mode="simulation" aria-checked="true">Scenario Simulation</button>
+          <button type="button" role="radio" data-mode="simulation" aria-checked="true">Scenario / Demo</button>
           <button type="button" role="radio" data-mode="live" aria-checked="false">Live Sensor</button>
         </div>
       </div>
@@ -146,9 +156,10 @@
       <div class="control-group">
         <span class="control-label">Scenario</span>
         <div class="segmented" id="scenario-toggle" role="radiogroup" aria-label="Encroachment scenario">
-          <button type="button" role="radio" data-scenario="low" aria-checked="false">1 · Low</button>
-          <button type="button" role="radio" data-scenario="medium" aria-checked="true">2 · Medium</button>
-          <button type="button" role="radio" data-scenario="high" aria-checked="false">3 · High</button>
+          <!-- Labels are replaced by the scenario labels from shared_mock_data.json -->
+          <button type="button" role="radio" data-scenario="low" aria-checked="false">Low</button>
+          <button type="button" role="radio" data-scenario="medium" aria-checked="true">Medium</button>
+          <button type="button" role="radio" data-scenario="high" aria-checked="false">High</button>
         </div>
       </div>
 
@@ -172,7 +183,7 @@
     <!-- ============ ENVIRONMENTAL & SATELLITE DATA (sample) ============ -->
     <section class="panel env-panel" aria-labelledby="env-title">
       <div class="panel-head">
-        <h2 id="env-title">Environmental &amp; satellite data</h2>
+        <h2 id="env-title">Field data sample <span class="h2-note">satellite + weather, future real-world inputs</span></h2>
         <span class="sample-badge">Sample data · not real sensor or satellite measurements</span>
       </div>
 
@@ -185,9 +196,9 @@
           <div class="metrics">
             <div class="metric"><span class="metric-label">Temperature</span><span class="metric-value"><span id="e-temp">—</span><small>°C</small></span></div>
             <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="e-hum">—</span><small>%</small></span></div>
-            <div class="metric metric-key"><span class="metric-label">Wind speed</span><span class="metric-value"><span id="e-wind">—</span><small>m/s</small></span></div>
+            <div class="metric metric-key"><span class="metric-label">Field wind</span><span class="metric-value"><span id="e-wind">—</span><small>m/s</small></span></div>
           </div>
-          <p class="muted small">Temperature and humidity are context only; the demo rule does not use them.</p>
+          <p class="muted small">Field weather for a real corridor, separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.</p>
         </div>
 
         <!-- Satellite-derived features -->
@@ -221,14 +232,22 @@
     <section class="panel data-panel" aria-labelledby="data-title">
       <h2 id="data-title">Live data</h2>
       <dl class="data-list">
-        <dt>Timestamp</dt>      <dd id="d-timestamp">—</dd>
-        <dt>Sand level</dt>     <dd id="d-sand">—</dd>
+        <dt>Received</dt>       <dd id="d-timestamp">—</dd>
+        <dt>Scenario</dt>       <dd id="d-scenario">—</dd>
         <dt>Risk</dt>           <dd id="d-risk">—</dd>
-        <dt>Operating mode</dt> <dd id="d-mode">Scenario Simulation</dd>
+        <dt>Operating mode</dt> <dd id="d-mode">Scenario / Demo</dd>
         <dt>Status</dt>         <dd id="d-status">Reset</dd>
         <dt>Elapsed</dt>        <dd id="d-elapsed">00:00</dd>
-        <dt>Env. data</dt>      <dd id="d-envsource">—</dd>
+        <dt>Data origin</dt>    <dd id="d-origin">—</dd>
+        <dt>Field data</dt>     <dd id="d-envsource">—</dd>
       </dl>
+      <!-- The readings exactly as received (six contract fields) -->
+      <div class="table-wrap">
+        <table class="readings-table">
+          <thead><tr><th>sensor_id</th><th>value</th><th>unit</th><th>source</th><th>status</th><th>timestamp</th></tr></thead>
+          <tbody id="d-readings"><tr class="empty"><td colspan="6">No readings yet.</td></tr></tbody>
+        </table>
+      </div>
       <details class="json-view">
         <summary>Current data object (JSON)</summary>
         <pre id="d-json">{}</pre>
@@ -247,10 +266,10 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Run</th><th>Time</th><th>Mode</th><th>Scenario</th><th>Sand %</th><th>Risk</th></tr>
+            <tr><th>Run</th><th>Received</th><th>Scenario</th><th>Sensor</th><th>Value</th><th>Unit</th><th>Source</th><th>Preset risk</th></tr>
           </thead>
           <tbody id="log-body">
-            <tr class="empty"><td colspan="6">No readings yet. Press Start to record data.</td></tr>
+            <tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>
           </tbody>
         </table>
       </div>
@@ -267,6 +286,8 @@
   <script src="js/risk.js"></script>
   <script src="js/environmentData.js"></script>
   <script src="js/environmentRule.js"></script>
+  <script src="js/sharedMockData.js"></script>
+  <script src="js/scenarioData.js"></script>
   <script src="js/dataSources.js"></script>
   <script src="js/logger.js"></script>
   <script src="js/dashboard.js"></script>

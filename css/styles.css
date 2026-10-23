@@ -66,6 +66,20 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
 .connection[data-state="not_configured"] .dot,
 .connection[data-state="disconnected"] .dot { background: var(--high); }
 
+/* ---------- Shared data status ---------- */
+.data-status {
+  max-width: 1400px; margin: 10px auto 0; padding: 8px 28px;
+  font-size: 0.82rem; color: var(--muted);
+}
+.data-status strong { color: var(--text); }
+.data-status[data-state="error"] { color: var(--high); }
+.data-status[data-state="error"] strong { color: var(--high); }
+.data-status ul { margin: 4px 0 0; padding-left: 20px; }
+.reading-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.readings-table { margin-top: 4px; font-size: 0.8rem; }
+.readings-table td, .readings-table th { padding: 5px 8px; }
+.readings-table td:last-child { white-space: normal; word-break: break-all; }
+
 /* ---------- Layout ---------- */
 .layout {
   display: grid;
@@ -121,7 +135,6 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
 .sensor text { fill: #fff; paint-order: stroke; stroke: #1b1b1b; stroke-width: 3px; }
 .sensor.covered circle { fill: var(--medium); }
 
-#sand-on-road { transition: d 0.6s ease; }
 
 .live-notice {
   position: absolute; inset: 12px;
@@ -311,6 +324,7 @@ tr.empty td { color: var(--muted); text-align: center; padding: 22px; }
 }
 @media (max-width: 600px) {
   .topbar { flex-direction: column; align-items: flex-start; padding: 16px 16px 0; }
+  .data-status { padding: 8px 16px; }
   .layout { padding: 12px 16px; }
   h1 { font-size: 1.3rem; }
   .controls { gap: 14px; }

@@ -2,21 +2,24 @@
  * app.js — the "brain" that connects controls, data sources, logging
  * and the dashboard.
  *
- * Flow of one reading:
+ * Flow of one delivery:
  *   data source -> handleReading() -> buildSensorData()
- *               -> logger.add()  +  updateDashboard()
+ *               -> logger.add() (one row per reading)  +  updateDashboard()
  * ===================================================================== */
 
 // ---------- Application state (one place, easy to explain) ----------
 const state = {
-  mode: "simulation",               // "simulation" | "live"
+  mode: "simulation",               // "simulation" (Scenario / Demo) | "live"
   status: "reset",                  // "running" | "stopped" | "reset"
   scenario: CONFIG.DEFAULT_SCENARIO,
   runId: 0,                         // increases each time a new run starts after Reset
   elapsedMs: 0,                     // running time of the current run
   runningSince: null,               // Date.now() when the last Start happened
-  lastReading: null,                // last raw reading { timestamp, sand_level }
-  environment: null,                // satellite + weather record (see environmentData.js)
+  receivedAt: null,                 // when the last readings arrived
+  scenarioMeta: null,               // { scenario_id, label, risk_level } of the last delivery
+  readings: {},                     // latest contract reading per sensor_id
+  environment: null,                // field data sample (see environmentData.js)
+  dataReady: false,                 // shared mock data loaded and valid
 };
 
 // [FUTURE DATA INTEGRATION POINT] swap this for a real provider with the same load().
@@ -29,7 +32,7 @@ const callbacks = {
   onConnection: handleConnection,
 };
 const sources = {
-  simulation: new SimulationSource(callbacks),
+  simulation: new ScenarioSource(callbacks),
   live: new LiveSensorSource(callbacks),   // [PYTHON / ARDUINO INTEGRATION POINT]
 };
 const activeSource = () => sources[state.mode];
@@ -41,50 +44,56 @@ function elapsedSeconds() {
   return Math.round((state.elapsedMs + running) / 1000);
 }
 
-// Combines the latest raw reading with the app state into the agreed format.
+// Combines the latest readings with the app state into one object.
 function buildSensorData() {
-  const r = state.lastReading;
-  // Simulation starts from an empty box (0 %). Live mode shows null until a
-  // real reading arrives, so nothing is displayed that was not measured.
-  const level = r ? r.sand_level : (state.mode === "simulation" ? 0 : null);
-  const hasLevel = level !== null;
+  const sand = state.readings.sand_01 || null;
+  const wind = state.readings.wind_01 || null;
+  const meta = state.scenarioMeta;
+
+  // Scenario mode: the preset label from the file. Live: thresholds (if agreed).
+  const riskLevel = meta ? displayRisk(meta.risk_level) : classifySandDepth(sand ? sand.value : null);
+  const riskBasis = meta ? "preset label (shared mock data)"
+    : riskLevel ? "sand_01 thresholds (config.js)" : null;
+  const condition = roadConditionForRisk(riskLevel);
+
   return {
-    timestamp: r ? r.timestamp : null,
-    sand_level: level,
-    risk_level: hasLevel ? classifyRisk(level) : null,
-    road_condition: hasLevel ? describeRoadCondition(level).label : null,
+    received_at: state.receivedAt,
     mode: state.mode,
     status: state.status,
-    scenario: state.mode === "simulation" ? state.scenario : null,
+    scenario_id: meta ? meta.scenario_id : null,
+    scenario_label: meta ? meta.label : null,
+    data_origin: state.mode === "simulation" ? scenarioOrigin() : "live backend",
+    readings: Object.values(state.readings),   // contract readings, unchanged
+    sand_depth_cm: sand ? sand.value : null,
+    wind_speed_mps: wind ? wind.value : null,
+    risk_level: riskLevel,
+    risk_basis: riskBasis,
+    road_condition: condition ? condition.label : null,
     elapsed_s: elapsedSeconds(),
-    environment: state.environment,                                  // null when no source
+    environment: state.environment,                                  // field data sample, or null
     environmental_indicator: assessEnvironmentalIndicator(state.environment), // demo rule only
   };
 }
 
-// Flat row for the log / CSV (nested objects become simple columns).
-function toLogEntry(data) {
-  const env = data.environment;
-  const ind = data.environmental_indicator;
-  return {
+function scenarioOrigin() {
+  if (CONFIG.SCENARIO_API_BASE) return `PRO-06 API (${CONFIG.SCENARIO_API_BASE})`;
+  return SharedFileScenarioProvider.origin || "not loaded";
+}
+
+// One CSV row per reading: the six contract fields plus run context.
+function toLogEntries(data) {
+  return data.readings.map((r) => ({
     run_id: state.runId,
-    ...data,
-    data_source: env ? env.data_source : "",
-    observation_date: env ? env.satellite.observation_date : "",
-    temperature_c: env ? env.weather.temperature_c : "",
-    humidity_pct: env ? env.weather.humidity_pct : "",
-    wind_speed_mps: env ? env.weather.wind_speed_mps : "",
-    sand_coverage_pct: env ? env.satellite.sand_coverage_pct : "",
-    vegetation_coverage_pct: env ? env.satellite.vegetation_coverage_pct : "",
-    bare_soil_pct: env ? env.satellite.bare_soil_pct : "",
-    distance_to_road_m: env ? env.satellite.distance_to_road_m : "",
-    demo_indicator_score: ind ? ind.score : "",
-    demo_indicator_level: ind ? ind.level : "",
-  };
+    received_at: data.received_at,
+    mode: data.mode,
+    scenario_id: data.scenario_id || "",
+    preset_risk_level: state.scenarioMeta ? state.scenarioMeta.risk_level : "",
+    ...r,
+  }));
 }
 
 
-// ---------- Environmental + satellite data ----------
+// ---------- Field data sample (satellite + weather) ----------
 // Single entry point for environment records from ANY provider
 // (sample today; satellite pipeline, weather data or Python backend later).
 function applyEnvironmentData(raw) {
@@ -103,29 +112,33 @@ function refresh() {
 
 
 // ---------- Callbacks from the data sources ----------
-function handleReading(raw) {
+function handleReading({ received_at, scenario, readings }) {
   if (state.status !== "running") return; // ignore anything that arrives while stopped
-  state.lastReading = raw;
+  state.receivedAt = received_at;
+  state.scenarioMeta = scenario;
+  if (scenario) state.readings = {};     // a scenario delivery replaces all readings
+  readings.forEach((r) => { state.readings[r.sensor_id] = r; });
   if (state.mode === "live") showLiveNotice(false); // real data is arriving
+
   const data = buildSensorData();
-  logger.add(toLogEntry(data));
+  toLogEntries({ ...data, readings }).forEach((entry) => logger.add(entry)); // only the new readings
   updateDashboard(data);
   renderLog(logger);
-
-  // The simulation stops by itself when the road is fully covered.
-  if (state.mode === "simulation" && raw.sand_level >= 100) {
-    stopExperiment();
-    setHint("Road fully covered. Press Reset to run the experiment again.");
-  }
 }
 
 function handleConnection(connState, message) {
-  if (state.mode !== "live" && connState !== "simulation") return;
-
   if (connState === "simulation") {
-    setConnectionIndicator("simulation", "Simulation: no hardware required");
+    if (state.mode === "simulation") setConnectionIndicator("simulation", "Scenario / Demo: no hardware required");
     return;
   }
+  if (connState === "api_error") {
+    setConnectionIndicator("disconnected", "Scenario API: error");
+    if (state.status === "running") stopExperiment();
+    setHint(message);
+    return;
+  }
+  if (state.mode !== "live") return;
+
   setConnectionIndicator(connState, `Live: ${{
     not_configured: "not configured",
     connecting: "connecting…",
@@ -134,7 +147,7 @@ function handleConnection(connState, message) {
   }[connState]}`);
 
   if (connState === "connected") {
-    showLiveNotice(!state.lastReading, "Backend connected", message);
+    showLiveNotice(Object.keys(state.readings).length === 0, "Backend connected", message);
   } else if (connState === "connecting") {
     showLiveNotice(true, "Connecting…", message);
   } else {
@@ -151,14 +164,14 @@ function handleConnection(connState, message) {
 // ---------- Control actions ----------
 function startExperiment() {
   if (state.status === "running") return;
-  if (state.mode === "simulation" && state.lastReading && state.lastReading.sand_level >= 100) {
-    setHint("Road is already fully covered. Press Reset first.");
+  if (state.mode === "simulation" && !state.dataReady) {
+    setHint("Shared mock data is not loaded, so there is nothing to play.");
     return;
   }
 
   const previous = { status: state.status, runId: state.runId };
   if (state.status === "reset") state.runId += 1; // new run after Reset; Stop → Start resumes the same run
-  // Status must be "running" before the source sends its first reading.
+  // Status must be "running" before the source sends its first readings.
   state.status = "running";
   state.runningSince = Date.now();
   setHint("");
@@ -185,7 +198,9 @@ function stopExperiment() {
 function resetExperiment() {
   activeSource().reset();
   state.status = "reset";
-  state.lastReading = null;
+  state.readings = {};
+  state.scenarioMeta = null;
+  state.receivedAt = null;
   state.elapsedMs = 0;
   state.runningSince = null;
   setHint("");
@@ -195,17 +210,17 @@ function resetExperiment() {
 
 function setMode(mode) {
   if (mode === state.mode) return;
-  // Switching mode always resets the current run, so simulated and real
+  // Switching mode always resets the current run, so scenario and real
   // values are never mixed on screen. The log keeps all earlier rows.
   resetExperiment();
   state.mode = mode;
   if (mode === "simulation") {
     showLiveNotice(false);
-    setConnectionIndicator("simulation", "Simulation: no hardware required");
+    setConnectionIndicator("simulation", "Scenario / Demo: no hardware required");
   } else {
     showLiveNoticeForIdleLive();
   }
-  // Sample environment data belongs to the simulation only; live mode has no source yet.
+  // Field data sample belongs to Scenario / Demo only; live mode has no source yet.
   loadScenarioEnvironment();
 }
 
@@ -221,20 +236,30 @@ function showLiveNoticeForIdleLive() {
   }
 }
 
-function setScenario(key) {
-  if (!CONFIG.SCENARIOS[key]) return;
-  state.scenario = key;
-  sources.simulation.setScenario(key); // takes effect on the next tick, even while running
-  setHint(CONFIG.SCENARIOS[key].description);
-  loadScenarioEnvironment(); // weather + satellite values, road strip and demo indicator update together
+function setScenario(id) {
+  if (!CONFIG.SCENARIO_ORDER.includes(id)) return;
+  state.scenario = id;
+  sources.simulation.setScenario(id); // next delivery uses it, even while running
+  setHint(scenarioSummary(id));
+  if (state.status === "running") sources.simulation.tick(); // show the new scenario at once
+  loadScenarioEnvironment(); // field data, road strip and demo indicator update together
+}
+
+// "Scenario / Demo · Medium: wind_01 6 m/s, sand_01 2.5 cm, preset risk medium"
+function scenarioSummary(id) {
+  const sc = SharedFileScenarioProvider.list().find((s) => s.scenario_id === id);
+  if (!sc) return "";
+  const r = readingsBySensor(sc.readings);
+  const parts = Object.values(r).map((x) => `${x.sensor_id} ${x.value} ${x.unit}`).join(", ");
+  const next = state.status === "running" ? "" : " Press Start to play it.";
+  return `Scenario / Demo · ${sc.label}: ${parts}, preset risk "${sc.risk_level}".${next}`;
 }
 
 
 // ---------- Keep buttons and toggles in sync with the state ----------
 function updateControls() {
   const running = state.status === "running";
-  const roadFull = state.mode === "simulation" && state.lastReading && state.lastReading.sand_level >= 100;
-  $("btn-start").disabled = running || roadFull;
+  $("btn-start").disabled = running || (state.mode === "simulation" && !state.dataReady);
   $("btn-stop").disabled = !running;
   $("btn-start").innerHTML = state.status === "stopped" ? "&#9654; Resume" : "&#9654; Start";
 
@@ -243,16 +268,17 @@ function updateControls() {
   });
   document.querySelectorAll("#scenario-toggle button").forEach((b) => {
     b.setAttribute("aria-checked", String(b.dataset.scenario === state.scenario));
-    b.disabled = state.mode !== "simulation";
+    b.disabled = state.mode !== "simulation" || !state.dataReady;
   });
+  const sc = SharedFileScenarioProvider.list().find((s) => s.scenario_id === state.scenario);
   $("sim-scenario-note").textContent = state.mode === "simulation"
-    ? `Scenario: ${CONFIG.SCENARIOS[state.scenario].label}`
+    ? `Scenario / Demo: ${sc ? sc.label : "—"}`
     : "Source: live sensors";
 }
 
 
 // ---------- Wire up the page ----------
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initDashboard();
 
   $("btn-start").addEventListener("click", startExperiment);
@@ -276,6 +302,14 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(() => {
     if (state.status === "running") $("d-elapsed").textContent = formatElapsed(elapsedSeconds());
   }, 1000);
+
+  // Load the shared mock data before anything can be played.
+  state.dataReady = await SharedFileScenarioProvider.load();
+  showDataStatus(SharedFileScenarioProvider);
+  if (state.dataReady) {
+    labelScenarioButtons(SharedFileScenarioProvider.list());
+    setHint(scenarioSummary(state.scenario));
+  }
 
   sources.simulation.setScenario(state.scenario);
   loadScenarioEnvironment();
