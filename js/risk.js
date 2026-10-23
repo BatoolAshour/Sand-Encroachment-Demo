@@ -1,7 +1,11 @@
 /* =====================================================================
- * risk.js — turns a sand level (0–100 %) into a risk level and a
- * road condition, using the bands defined in config.js.
- * Pure functions: same input always gives the same output.
+ * risk.js — small, pure helpers for risk labels and road condition.
+ *
+ * Scenario mode: risk = the PRESET risk_level stored in the shared file
+ *                (a display label, not a model output).
+ * Live mode:     risk = sand_01 depth vs CONFIG.SAND_DEPTH_THRESHOLDS_CM,
+ *                or null ("Not classified") while no thresholds are agreed.
+ * Demo score:    classifyRisk() maps the 0–100 demo indicator to a band.
  * ===================================================================== */
 
 // Keep any value inside 0–100 and round to one decimal place.
@@ -11,29 +15,33 @@ function clampLevel(value) {
   return Math.round(Math.min(100, Math.max(0, n)) * 10) / 10;
 }
 
-// Returns "Low", "Medium" or "High" for a sand level.
-// The level is rounded to a whole number first, so 30.4 % counts as 30 (Low)
-// and 30.5 % counts as 31 (Medium), matching the "0–30 / 31–60 / 61–100" bands.
-function classifyRisk(sandLevel) {
-  const level = Math.round(clampLevel(sandLevel));
+// 0–100 score → "Low" | "Medium" | "High" using CONFIG.RISK_BANDS.
+// The score is rounded first, so 30.4 counts as 30 (Low) and 30.5 as 31 (Medium).
+function classifyRisk(score) {
+  const level = Math.round(clampLevel(score));
   for (const band of CONFIG.RISK_BANDS) {
     if (level <= band.max) return band.level;
   }
   return CONFIG.RISK_BANDS[CONFIG.RISK_BANDS.length - 1].level;
 }
 
-// Returns { label, detail } describing the road for a sand level.
-function describeRoadCondition(sandLevel) {
-  const level = clampLevel(sandLevel);
-  for (const condition of CONFIG.ROAD_CONDITIONS) {
-    if (level <= condition.max) return condition;
-  }
-  return CONFIG.ROAD_CONDITIONS[CONFIG.ROAD_CONDITIONS.length - 1];
-}
-
-// Text such as "0–30 %" for a risk band, used in the legend.
+// Text such as "0–30" for a demo score band.
 function describeBandRange(index) {
   const bands = CONFIG.RISK_BANDS;
   const min = index === 0 ? 0 : bands[index - 1].max + 1;
-  return `${min}–${bands[index].max} %`;
+  return `${min}–${bands[index].max}`;
+}
+
+// Live sand_01 depth (cm) → risk label, or null when thresholds are not set.
+function classifySandDepth(depthCm) {
+  const t = CONFIG.SAND_DEPTH_THRESHOLDS_CM;
+  if (!t || typeof depthCm !== "number") return null;
+  if (depthCm <= t.lowMax) return "Low";
+  if (depthCm <= t.mediumMax) return "Medium";
+  return "High";
+}
+
+// Risk label → { label, detail } for the road condition text.
+function roadConditionForRisk(riskLabel) {
+  return CONFIG.ROAD_CONDITION_BY_RISK[riskLabel] || null;
 }

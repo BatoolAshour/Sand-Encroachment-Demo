@@ -4,42 +4,47 @@
  * Both sources share the same small interface, so app.js does not care
  * which one is active:
  *
- *   source.start()   begin producing readings
+ *   source.start()   begin delivering readings
  *   source.stop()    pause (keeps current values)
  *   source.reset()   go back to the initial state
  *
  * Each source reports back through two callbacks given to its constructor:
- *   onReading({ timestamp, sand_level })      a new raw reading arrived
- *   onConnection(state, message)              connection/status changed
- *
- * app.js turns a raw reading into the full data object and passes it to
- * updateDashboard(). Risk is always calculated in the browser (risk.js),
- * so the same thresholds apply to simulated and real data.
+ *   onReading({ received_at, scenario, readings })   new readings arrived
+ *       readings = list of contract readings (timestamp, sensor_id, value,
+ *                  unit, source, status), exactly as received
+ *       scenario = { scenario_id, label, risk_level } or null (live)
+ *   onConnection(state, message)                     connection/status changed
  * ===================================================================== */
 
 
 /* ---------------------------------------------------------------------
- * 1) SimulationSource — generates readings in the browser.
- *    No backend or hardware needed.
+ * 1) ScenarioSource — Scenario / Demo mode.
+ *    Delivers the selected scenario from the SHARED MOCK DATA file
+ *    (or, later, from the PRO-06 API). Values are passed on unchanged:
+ *    nothing is generated or randomised in the browser.
  * --------------------------------------------------------------------- */
-class SimulationSource {
+class ScenarioSource {
   constructor({ onReading, onConnection }) {
     this.onReading = onReading;
     this.onConnection = onConnection;
     this.timer = null;
-    this.level = 0;
-    this.scenarioKey = CONFIG.DEFAULT_SCENARIO;
+    this.scenarioId = CONFIG.DEFAULT_SCENARIO;
   }
 
-  setScenario(key) {
-    if (CONFIG.SCENARIOS[key]) this.scenarioKey = key;
+  setScenario(id) {
+    this.scenarioId = id;
+  }
+
+  // File today; the Python API once CONFIG.SCENARIO_API_BASE is set.
+  provider() {
+    return CONFIG.SCENARIO_API_BASE ? ApiScenarioProvider : SharedFileScenarioProvider;
   }
 
   start() {
     if (this.timer) return true;
-    this.onConnection("simulation", "Scenario simulation running in the browser");
+    this.onConnection("simulation", "Scenario / Demo: shared mock data");
     this.timer = setInterval(() => this.tick(), CONFIG.TICK_INTERVAL_MS);
-    this.tick(); // first reading immediately so the dashboard reacts at once
+    this.tick(); // first delivery immediately so the dashboard reacts at once
     return true;
   }
 
@@ -50,21 +55,21 @@ class SimulationSource {
 
   reset() {
     this.stop();
-    this.level = 0;
   }
 
-  // One simulation step: add some sand, never more than the scenario allows.
-  tick() {
-    const scenario = CONFIG.SCENARIOS[this.scenarioKey];
-    if (this.level < scenario.maxLevel) {
-      const randomFactor = 0.6 + Math.random() * 0.8; // 0.6 – 1.4
-      this.level = Math.min(scenario.maxLevel, this.level + scenario.rate * randomFactor);
+  async tick() {
+    const id = this.scenarioId;
+    try {
+      const sc = await this.provider().get(id);
+      if (!this.timer || !sc) return; // stopped meanwhile, or unknown scenario
+      this.onReading({
+        received_at: new Date().toISOString(),
+        scenario: { scenario_id: sc.scenario_id, label: sc.label, risk_level: sc.risk_level },
+        readings: JSON.parse(JSON.stringify(sc.readings)), // copy: the source data is never modified
+      });
+    } catch (err) {
+      this.onConnection("api_error", `Could not load scenario "${id}" from the backend: ${err.message}`);
     }
-    // Sand does not disappear by itself, so the level never goes down here.
-    this.onReading({
-      timestamp: new Date().toISOString(),
-      sand_level: clampLevel(this.level),
-    });
   }
 }
 
@@ -78,9 +83,13 @@ class SimulationSource {
  *   Sand sensors -> Arduino/ESP32 -> USB serial -> python/bridge.py
  *                -> WebSocket (CONFIG.LIVE_BACKEND_URL) -> this class
  *
- * Expected message from the backend (one JSON object per reading):
- *   { "timestamp": "2026-10-22T12:00:00Z", "sand_level": 45 }
- * Extra fields are allowed and ignored. risk_level is recalculated here.
+ * Expected messages from the backend use the SAME six-field contract as
+ * the shared mock data, either one reading or a list of readings:
+ *   { "timestamp": "...Z", "sensor_id": "sand_01", "value": 2.1,
+ *     "unit": "cm", "source": "live", "status": "ok" }
+ * Readings that break the contract (fields, sensor_id, unit) are ignored.
+ * NOTE: a "source" value for real sensors is not defined in v1.0; "live" is
+ * a proposal to agree with PRO-06 in a v2.0 file.
  *
  * Optional commands this class sends to the backend, so Python can
  * forward them to the Arduino (e.g. switch the fan on/off):
@@ -128,9 +137,9 @@ class LiveSensorSource {
     };
 
     this.socket.onmessage = (event) => {
-      const reading = LiveSensorSource.parseMessage(event.data);
-      if (reading) {
-        this.onReading(reading);
+      const readings = LiveSensorSource.parseMessage(event.data);
+      if (readings) {
+        this.onReading({ received_at: new Date().toISOString(), scenario: null, readings });
       } else {
         console.warn("Ignored invalid message from backend:", event.data);
       }
@@ -166,7 +175,7 @@ class LiveSensorSource {
     }
   }
 
-  // Validates one backend message. Returns a raw reading or null.
+  // Validates one backend message. Returns a list of valid readings or null.
   static parseMessage(text) {
     let data;
     try {
@@ -174,11 +183,12 @@ class LiveSensorSource {
     } catch {
       return null;
     }
-    const level = Number(data && data.sand_level);
-    if (!Number.isFinite(level)) return null;
-    return {
-      timestamp: typeof data.timestamp === "string" ? data.timestamp : new Date().toISOString(),
-      sand_level: clampLevel(level),
-    };
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.readings) ? data.readings : [data]);
+    const valid = list.filter((r, i) => {
+      const problems = validateReading(r, `live reading ${i + 1}`, null);
+      if (problems.length) console.warn(problems.join(" "));
+      return problems.length === 0;
+    });
+    return valid.length ? valid : null;
   }
 }

@@ -1,65 +1,72 @@
 /* =====================================================================
  * config.js — ALL tunable settings live here.
  *
- * Change thresholds, scenario speeds or the backend URL in this file only.
- * Nothing else in the project needs to be edited for those changes.
+ * Scenario VALUES are not here: they come from data/shared_mock_data.json
+ * (shared with PRO-06) and must not be changed in the dashboard.
  * ===================================================================== */
 
 const CONFIG = {
-  // How often a new reading is produced in Scenario Simulation (milliseconds).
-  TICK_INTERVAL_MS: 1000,
+  // While running, the selected scenario's readings are delivered again
+  // every TICK_INTERVAL_MS (like polling the future Python API).
+  TICK_INTERVAL_MS: 2000,
 
   /* -------------------------------------------------------------------
-   * Risk classification (prototype demonstration thresholds).
-   * A sand level is classified by the FIRST band whose `max` it does not
-   * exceed. Bands must be sorted from lowest to highest.
-   * These are NOT scientifically validated road-safety thresholds.
+   * Shared mock data (PRO-01 + PRO-06). Scenario IDs: low, medium, high.
    * ------------------------------------------------------------------- */
-  RISK_BANDS: [
-    { level: "Low",    max: 30  },   // 0 – 30 %
-    { level: "Medium", max: 60  },   // 31 – 60 %
-    { level: "High",   max: 100 },   // 61 – 100 %
-  ],
-
-  /* -------------------------------------------------------------------
-   * Road condition text shown for each sand level range.
-   * Same rule as above: first entry whose `max` is not exceeded wins.
-   * ------------------------------------------------------------------- */
-  ROAD_CONDITIONS: [
-    { max: 10,  label: "Clear",              detail: "No significant sand on the road surface." },
-    { max: 30,  label: "Light sand at edge", detail: "Sand is collecting along the road shoulder." },
-    { max: 60,  label: "Partially covered",  detail: "Sand is reducing the usable lane width." },
-    { max: 85,  label: "Heavily covered",    detail: "Most of the lane is covered with sand." },
-    { max: 100, label: "Blocked",            detail: "The road surface is fully covered in the model." },
-  ],
-
-  /* -------------------------------------------------------------------
-   * Encroachment scenarios for the browser simulation.
-   *  rate     : average % of sand added per tick
-   *  maxLevel : level at which this scenario stops accumulating
-   * Each tick adds rate × a random factor between 0.6 and 1.4,
-   * so the curve looks natural but always moves upward.
-   * ------------------------------------------------------------------- */
-  // Each scenario also has a matching SAMPLE environmental record with the
-  // same key in environmentData.js (wind, sand coverage, distance, …).
-  SCENARIOS: {
-    low:    { label: "Low",    rate: 0.6, maxLevel: 28,  description: "Scenario 1: light wind, sand far from the road, more vegetation." },
-    medium: { label: "Medium", rate: 1.2, maxLevel: 58,  description: "Scenario 2: moderate wind, sand front closer to the road." },
-    high:   { label: "High",   rate: 2.0, maxLevel: 100, description: "Scenario 3: strong wind, sand right next to the road, little vegetation." },
+  SHARED_DATA: {
+    path: "data/shared_mock_data.json",
+    schemaVersion: "1.0",
   },
+  SCENARIO_ORDER: ["low", "medium", "high"],
   DEFAULT_SCENARIO: "medium",
 
   /* -------------------------------------------------------------------
+   * [PYTHON INTEGRATION POINT — PRO-06]
+   * Base URL of the Python backend that serves the same scenarios, e.g.
+   * "http://localhost:5000" → GET /api/scenarios/<scenario_id>.
+   * Leave null until the endpoint is agreed and running; the dashboard then
+   * reads the shared JSON file directly.
+   * ------------------------------------------------------------------- */
+  SCENARIO_API_BASE: null,
+
+  /* -------------------------------------------------------------------
    * [PYTHON / ARDUINO INTEGRATION POINT]
-   * WebSocket address of the future Python backend (see python/bridge.py).
-   * Leave as null until the backend exists. While it is null, Live Sensor
-   * Mode shows "not configured" and never invents readings.
+   * WebSocket address for Live Sensor Mode (see python/bridge.py).
+   * While null, Live mode shows "not configured" and never invents readings.
    * Example when ready:  "ws://localhost:8765"
    * ------------------------------------------------------------------- */
   LIVE_BACKEND_URL: null,
 
+  // Drawing / gauge scale only: this sand_01 depth fills the road picture.
+  SAND_DEPTH_DISPLAY_MAX_CM: 6,
+
   /* -------------------------------------------------------------------
-   * Demonstration rule for the environmental indicator (environmentRule.js).
+   * Risk for LIVE readings (scenario mode uses the preset risk_level from
+   * the shared file instead). No cm thresholds are agreed yet, so this is
+   * null and live risk shows "Not classified". When the team agrees, set:
+   *   { lowMax: <cm>, mediumMax: <cm> }   (above mediumMax = High)
+   * ------------------------------------------------------------------- */
+  SAND_DEPTH_THRESHOLDS_CM: null,
+
+  // Road condition text shown for each risk label.
+  ROAD_CONDITION_BY_RISK: {
+    Low:    { label: "Light sand at edge", detail: "A thin layer of sand near the road edge." },
+    Medium: { label: "Partially covered",  detail: "Sand is spreading onto the lane." },
+    High:   { label: "Heavily covered",    detail: "Deep sand covers most of the lane." },
+  },
+
+  /* -------------------------------------------------------------------
+   * Bands for the 0–100 DEMO indicator score (environmentRule.js).
+   * First band whose `max` is not exceeded wins. Prototype values only.
+   * ------------------------------------------------------------------- */
+  RISK_BANDS: [
+    { level: "Low",    max: 30  },   // 0 – 30
+    { level: "Medium", max: 60  },   // 31 – 60
+    { level: "High",   max: 100 },   // 61 – 100
+  ],
+
+  /* -------------------------------------------------------------------
+   * Demonstration rule for the field-data indicator (environmentRule.js).
    * ILLUSTRATIVE ONLY: a transparent weighted score, NOT a validated model
    * and NOT the future AI prediction model.
    *
@@ -67,8 +74,7 @@ const CONFIG = {
    * `low` (factor = 0) and `high` (factor = 1). For distance and vegetation
    * `low` is the larger number, because MORE distance / vegetation means
    * LESS risk. Weights must add up to 1. The 0–100 score is then classified
-   * with the same RISK_BANDS as the road sand level.
-   * Temperature and humidity are shown for context but are NOT used here.
+   * with RISK_BANDS. Temperature and humidity are shown but NOT used here.
    * ------------------------------------------------------------------- */
   DEMO_RULE: {
     wind_speed_mps:          { weight: 0.30, low: 3,   high: 12, label: "Wind speed" },
