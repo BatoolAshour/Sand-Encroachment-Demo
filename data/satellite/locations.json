@@ -1,0 +1,35 @@
+{
+  "description": "Demo road segments for the Satellite Monitoring section. Each area is a square of size_m around (lat, lon). Add your own entries here; a road centreline can be added as roads/<id>.geojson.",
+  "locations": [
+    {
+      "id": "dahna_highway",
+      "name": "Divided highway across the Ad-Dahna sand belt",
+      "region": "Ad-Dahna, between Riyadh and the Eastern Province",
+      "lat": 25.1401,
+      "lon": 48.2743,
+      "size_m": 5000,
+      "default_date": "2026-10-23",
+      "description": "Highway crossing a red dune field; sand lies directly against both carriageways."
+    },
+    {
+      "id": "salwa_highway_nw",
+      "name": "Highway north-west of Salwa",
+      "region": "Eastern Province, near the Gulf of Salwa",
+      "lat": 24.886,
+      "lon": 50.6662,
+      "size_m": 5000,
+      "default_date": "2026-10-20",
+      "description": "Highway between sand sheets (west) and pale coastal flats (east)."
+    },
+    {
+      "id": "salwa_highway_south",
+      "name": "Highway south of the Salwa interchange",
+      "region": "Eastern Province, near Salwa",
+      "lat": 24.7958,
+      "lon": 50.7199,
+      "size_m": 5000,
+      "default_date": "2026-10-20",
+      "description": "Dual carriageway with sand sheets on the west side and sabkha / rock outcrops on the east."
+    }
+  ]
+}

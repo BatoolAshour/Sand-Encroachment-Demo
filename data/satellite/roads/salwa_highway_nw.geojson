@@ -1,0 +1,41 @@
+{
+ "type": "FeatureCollection",
+ "properties": {
+  "source": "Traced by hand on Sentinel-2 scene S2C_39RVH_20261020_0_L2A (approximate, ±10–20 m)",
+  "method": "manual-trace",
+  "note": "Approximate (about ±10–20 m). Main carriageway only. Replace with OpenStreetMap: python python/satellite_cache.py --refresh-roads"
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Highway north-west of Salwa"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      50.641501,
+      24.901286
+     ],
+     [
+      50.651429,
+      24.892097
+     ],
+     [
+      50.661355,
+      24.882908
+     ],
+     [
+      50.676242,
+      24.868943
+     ],
+     [
+      50.682691,
+      24.863448
+     ]
+    ]
+   }
+  }
+ ]
+}

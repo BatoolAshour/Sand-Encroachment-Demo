@@ -1,0 +1,65 @@
+{
+ "type": "FeatureCollection",
+ "properties": {
+  "source": "Traced by hand on Sentinel-2 scene S2C_39RVH_20261020_0_L2A (approximate, ±10–20 m)",
+  "method": "manual-trace",
+  "note": "Approximate (about ±10–20 m). Main carriageway only. Replace with OpenStreetMap: python python/satellite_cache.py --refresh-roads"
+ },
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Highway south of the Salwa interchange"
+   },
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      50.716153,
+      24.818359
+     ],
+     [
+      50.718043,
+      24.813847
+     ],
+     [
+      50.719438,
+      24.809334
+     ],
+     [
+      50.720141,
+      24.80482
+     ],
+     [
+      50.720646,
+      24.800305
+     ],
+     [
+      50.721151,
+      24.795791
+     ],
+     [
+      50.721655,
+      24.791276
+     ],
+     [
+      50.72216,
+      24.786761
+     ],
+     [
+      50.722665,
+      24.782246
+     ],
+     [
+      50.72317,
+      24.777732
+     ],
+     [
+      50.723674,
+      24.773217
+     ]
+    ]
+   }
+  }
+ ]
+}
