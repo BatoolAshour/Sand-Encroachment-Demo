@@ -175,21 +175,25 @@ def _pct(part, whole):
     return round(100.0 * int((part & whole).sum()) / n, 1) if n else None
 
 
-def _share(mask):
-    return round(100.0 * int(mask.sum()) / mask.size, 1)
+def measure(masks, road_distance_m=None, buffer_m=200, pixel_m=10, region=None):
+    """Coverage for the analysis area and, when a road is known, for the strip beside it.
 
-
-def measure(masks, road_distance_m=None, buffer_m=200, pixel_m=10):
-    """Coverage for the whole area and, when a road is known, for the strip beside it."""
+    region: optional mask of the pixels to measure (a route segment's part of the
+    2 km study area). Without it the whole image is the analysis area.
+    """
     valid, sand = masks["valid"], masks["sand"]
     total = valid.size
+    if region is None:
+        region = np.ones_like(valid)
+    area_valid = valid & region
     out = {
-        "area_km2": round(total * pixel_m * pixel_m / 1e6, 2),
-        "valid_pct": _share(valid),
-        "cloud_pct": _share(masks["cloud"]),
-        "area_sand_coverage_pct": _pct(sand, valid),
-        "area_vegetation_pct": _pct(masks["vegetation"], valid),
-        "area_other_bare_pct": _pct(masks["other_bare"], valid),
+        "area_km2": round(int(region.sum()) * pixel_m * pixel_m / 1e6, 2),
+        "image_km2": round(total * pixel_m * pixel_m / 1e6, 2),
+        "valid_pct": _pct(valid, region),
+        "cloud_pct": _pct(masks["cloud"], region),
+        "area_sand_coverage_pct": _pct(sand, area_valid),
+        "area_vegetation_pct": _pct(masks["vegetation"], area_valid),
+        "area_other_bare_pct": _pct(masks["other_bare"], area_valid),
         "buffer_m": None,
         "sand_coverage_pct": None,
         "vegetation_coverage_pct": None,
@@ -199,7 +203,7 @@ def measure(masks, road_distance_m=None, buffer_m=200, pixel_m=10):
     if road_distance_m is None:
         return out
 
-    strip = valid & (road_distance_m <= buffer_m)
+    strip = area_valid & (road_distance_m <= buffer_m)
     out.update({
         "buffer_m": buffer_m,
         "strip_valid_pixels": int(strip.sum()),
@@ -207,7 +211,7 @@ def measure(masks, road_distance_m=None, buffer_m=200, pixel_m=10):
         "vegetation_coverage_pct": _pct(masks["vegetation"], strip),
         "bare_soil_pct": _pct(masks["other_bare"], strip),
     })
-    sand_d = road_distance_m[sand & valid]
+    sand_d = road_distance_m[sand & area_valid]
     if sand_d.size:
         # Distance from the road centreline to the nearest detected sand pixel
         # (pixel-centre accuracy, so it is rounded to whole 10 m steps).

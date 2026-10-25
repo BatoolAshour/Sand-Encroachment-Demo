@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sand Encroachment Monitoring System</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261025-3">
+  <link rel="stylesheet" href="css/styles.css?v=20261025-4">
 </head>
 <body>
 
@@ -293,7 +293,7 @@
          simulation or its risk level. Logic in js/satellite.js. -->
     <section class="panel sat-panel" aria-labelledby="sat-title">
       <div class="panel-head">
-        <h2 id="sat-title">Satellite monitoring <span class="h2-note">optional supporting view · real Sentinel-2 images of Saudi highways · separate from the road simulation</span></h2>
+        <h2 id="sat-title">Satellite monitoring <span class="h2-note">optional supporting view · real Sentinel-2 images of the research routes · separate from the road simulation</span></h2>
         <span class="real-badge">Real Sentinel-2 imagery · not measured by the physical prototype</span>
       </div>
 
@@ -306,8 +306,12 @@
           </div>
         </div>
         <label class="control-group">
-          <span class="control-label">Location</span>
+          <span class="control-label">Route</span>
           <select id="sat-location" class="select"></select>
+        </label>
+        <label class="control-group" id="sat-segment-group">
+          <span class="control-label">Segment (km along the route)</span>
+          <select id="sat-segment" class="select"></select>
         </label>
         <div class="control-group sat-custom" id="sat-custom" hidden>
           <span class="control-label">Custom point (lat, lon)</span>
@@ -321,17 +325,22 @@
           <select id="sat-date-cached" class="select"></select>
           <input type="date" id="sat-date-live" class="input" hidden>
         </label>
+        <label class="control-group" id="sat-buffer-group" hidden>
+          <span class="control-label">Road buffer (m)</span>
+          <input type="number" id="sat-buffer" class="input sat-buffer" min="10" max="2000" step="10" value="200">
+        </label>
         <div class="control-group">
           <span class="control-label">&nbsp;</span>
           <button type="button" class="btn btn-sat" id="btn-sat-analyse">Analyse</button>
         </div>
       </div>
+      <p class="sat-selection small" id="sat-selection">—</p>
       <p class="sat-status" id="sat-status" data-state="idle" aria-live="polite">—</p>
 
       <div class="sat-body">
         <div class="sat-images">
           <figure>
-            <img id="sat-img-original" alt="Sentinel-2 true-colour image of the selected road segment">
+            <img id="sat-img-original" alt="Sentinel-2 true-colour image of the selected route segment">
             <figcaption>Original · true colour (B4, B3, B2)</figcaption>
           </figure>
           <figure>
@@ -339,8 +348,9 @@
             <figcaption>
               Sand detection
               <span class="legend"><i class="lg-sand"></i>sand</span>
-              <span class="legend"><i class="lg-road"></i>road</span>
-              <span class="legend"><i class="lg-buffer"></i>analysis strip</span>
+              <span class="legend"><i class="lg-road"></i>road (KMZ centreline)</span>
+              <span class="legend"><i class="lg-study"></i>2 km study area (segment)</span>
+              <span class="legend"><i class="lg-buffer"></i>road buffer</span>
               <span class="legend"><i class="lg-excl"></i>cloud / water / no data</span>
             </figcaption>
           </figure>
@@ -348,13 +358,15 @@
 
         <div class="sat-results">
           <div class="metrics sat-metrics">
-            <div class="metric metric-key"><span class="metric-label">Sand in road strip</span><span class="metric-value"><span id="s-strip">—</span><small>%</small></span></div>
+            <div class="metric metric-key"><span class="metric-label" id="s-area-label">Sand, 2 km study area</span><span class="metric-value"><span id="s-area">—</span><small>%</small></span></div>
+            <div class="metric"><span class="metric-label" id="s-strip-label">Sand in road buffer</span><span class="metric-value"><span id="s-strip">—</span><small>%</small></span></div>
             <div class="metric"><span class="metric-label">Nearest sand to road</span><span class="metric-value"><span id="s-dist">—</span><small>m</small></span></div>
-            <div class="metric"><span class="metric-label">Sand, whole area</span><span class="metric-value"><span id="s-area">—</span><small>%</small></span></div>
           </div>
           <dl class="data-list sat-list">
-            <dt>Scene</dt>          <dd id="s-scene">—</dd>
-            <dt>Area</dt>           <dd id="s-extent">—</dd>
+            <dt>Route</dt>          <dd id="s-route">—</dd>
+            <dt>Segment</dt>        <dd id="s-segment">—</dd>
+            <dt>Observation</dt>    <dd id="s-scene">—</dd>
+            <dt>Analysis area</dt>  <dd id="s-extent">—</dd>
             <dt>Clear pixels</dt>   <dd id="s-valid">—</dd>
             <dt>Road geometry</dt>  <dd id="s-road">—</dd>
             <dt>Provider</dt>       <dd id="s-provider">—</dd>
@@ -363,7 +375,7 @@
           <div class="buttons">
             <button type="button" class="btn btn-ghost" id="btn-sat-use" disabled>Use in Field data panel</button>
           </div>
-          <p class="disclaimer small">Rule-based detection (colour segmentation, thresholds, texture, morphology) on real Sentinel-2 pixels, not validated in the field. Distance is measured from the road centreline to the nearest detected sand pixel. Contains modified Copernicus Sentinel data.</p>
+          <p class="disclaimer small">Rule-based detection (colour segmentation, thresholds, texture, morphology) on real Sentinel-2 pixels, not validated in the field. Route centrelines and 2 km study areas come unchanged from the research KMZ files. Percentages are shares of clear pixels in the segment's part of the study area; distance is from the road centreline to the nearest detected sand pixel in it. Contains modified Copernicus Sentinel data.</p>
         </div>
       </div>
     </section>
@@ -391,17 +403,17 @@
       }
     }, true);
   </script>
-  <script src="js/config.js?v=20261025-3"></script>
-  <script src="js/risk.js?v=20261025-3"></script>
-  <script src="js/environmentData.js?v=20261025-3"></script>
-  <script src="js/environmentRule.js?v=20261025-3"></script>
-  <script src="js/sharedMockData.js?v=20261025-3"></script>
-  <script src="js/scenarioData.js?v=20261025-3"></script>
-  <script src="js/dataSources.js?v=20261025-3"></script>
-  <script src="js/logger.js?v=20261025-3"></script>
+  <script src="js/config.js?v=20261025-4"></script>
+  <script src="js/risk.js?v=20261025-4"></script>
+  <script src="js/environmentData.js?v=20261025-4"></script>
+  <script src="js/environmentRule.js?v=20261025-4"></script>
+  <script src="js/sharedMockData.js?v=20261025-4"></script>
+  <script src="js/scenarioData.js?v=20261025-4"></script>
+  <script src="js/dataSources.js?v=20261025-4"></script>
+  <script src="js/logger.js?v=20261025-4"></script>
   <script src="data/satellite/cache_manifest.js"></script>
-  <script src="js/satellite.js?v=20261025-3"></script>
-  <script src="js/dashboard.js?v=20261025-3"></script>
-  <script src="js/app.js?v=20261025-3"></script>
+  <script src="js/satellite.js?v=20261025-4"></script>
+  <script src="js/dashboard.js?v=20261025-4"></script>
+  <script src="js/app.js?v=20261025-4"></script>
 </body>
 </html>

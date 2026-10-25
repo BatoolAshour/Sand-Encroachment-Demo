@@ -3,7 +3,8 @@
 A browser dashboard for the physical prototype (a road inside a box with sand, a wind fan
 and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
 ready to show real Arduino readings. A separate **Satellite Monitoring** section analyses
-real Sentinel-2 images of Saudi highways for sand cover (section 10).
+real Sentinel-2 images of the team's three **research routes** (Routes 3, 4 and 5, from the
+KMZ study-area files) for sand cover (section 10).
 
 ## Current scope
 
@@ -11,7 +12,7 @@ real Sentinel-2 images of Saudi highways for sand cover (section 10).
 |---|---|---|
 | **Road simulation** (Low / Medium / High) | Included | **Main feature.** Animated road, readings, preset risk label, log, CSV. |
 | **Live Arduino mode** | Included, ready for hardware | Same road view fed by real `sand_01` / `wind_01` readings via `python/bridge.py` → WebSocket. |
-| **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** at the bottom of the page. Real images of real roads, kept separate from the prototype. |
+| **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** at the bottom of the page. Real images of the research routes (KMZ), kept separate from the prototype. |
 | Machine learning / future prediction | **Not included** | A separate future phase. No model, forecast or prediction algorithm is in this dashboard. |
 
 Rules this version follows:
@@ -90,7 +91,8 @@ See section 10 for Copernicus credentials and the offline cache.
 │   ├── bridge.py              Reference Arduino → WebSocket template (PRO-06 owns the backend)
 │   ├── satellite_server.py    Flask API for live Sentinel-2 analysis (port 8780)
 │   ├── satellite_cache.py     Command line: pre-cache analyses for offline demos
-│   ├── satellite/             providers (CDSE, AWS), processing, roads, analysis, cache
+│   ├── import_routes.py       KMZ research routes → GeoJSON + segments (routes.json)
+│   ├── satellite/             providers (CDSE, AWS), processing, routes, roads, analysis, cache
 │   ├── tests/                 Offline unit tests for the satellite pipeline
 │   └── requirements.txt
 └── data/
@@ -100,9 +102,10 @@ See section 10 for Copernicus credentials and the offline cache.
     ├── sample_environment_scenarios.json  Field data sample (copy of the JS)
     ├── sample_backend_message.json    Example live message (contract format)
     └── satellite/
-        ├── locations.json             Demo road segments (id, name, centre, size, default date)
-        ├── roads/<id>.geojson         Road centrelines used for distance + road strip
-        ├── cache/<id>/<date>/         original.png, overlay.png, result.json (real analyses)
+        ├── routes/source/*.kmz        ORIGINAL research-route KMZ files (Routes 3, 4, 5)
+        ├── routes/<route>.geojson     Centreline + 2 km study area, coordinates unchanged
+        ├── routes.json                GENERATED: routes, validation report, segments
+        ├── cache/<segment>/<date>/    original.jpg, overlay.jpg, result.json (real analyses)
         └── cache_manifest.js          GENERATED list of cached analyses (works offline)
 ```
 
@@ -403,6 +406,22 @@ Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRAT
 
 ## 8. What was tested
 
+Research routes, tested on 25 Oct 2026 (Chromium + Python 3):
+- `python -m unittest discover -s tests` (in `python/`): 15 offline tests. New: every centreline
+  and study-area vertex equals the KMZ; all three routes pass validation (half-width ≈ 2 km);
+  swapped lat/lon, an open polygon and a shifted centreline are rejected; segments run from
+  km 0 to the end without gaps; Route 4's segment areas cover its study area exactly with no
+  overlap; measurements ignore sand outside the analysis area; a zone-edge segment (Route 5,
+  48° E) falls back to an existing Sentinel-2 tile. Every cached result belongs to a route segment.
+- Real imagery: 12 segments analysed from the AWS archive (all three routes, incl. the
+  segments either side of the UTM zone boundary); overlays checked by eye: the KMZ centreline
+  lies on the visible road.
+- Browser, cached and live: route and segment pickers (31 / 9 / 66 segments), only cached
+  segments enabled offline, route / segment / date / analysis area shown, Field data panel,
+  buffer validation (10–2000 m), live analysis of a new segment with a 300 m buffer, backend
+  offline message, demo locations gone, simulation and log unchanged, no horizontal scroll at
+  390 px.
+
 Scope refinement, tested on 25 Oct 2026 (Chromium, real mouse clicks):
 - Every control clicked by double-click (`file://`) and via `http.server`: Start, Stop, Resume,
   Reset, Low / Medium / High (also mid-run), both sensor modes, CSV export, Clear log, Field data
@@ -475,30 +494,84 @@ Tested in Chromium on 23 Oct 2026:
 
 ## 10. Satellite monitoring (real Sentinel-2)
 
-### What it does
-1. Pick a **location** (road segment, 5 × 5 km) and an **observation date**.
-2. The backend finds the nearest **clear** Sentinel-2 Level-2A scene (≤ 30 % tile cloud,
-   within ± 15 days), cuts out the area at 10 m and reads bands B02, B03, B04, B08, B11, B12
-   and the Scene Classification Layer (SCL).
-3. Sand is detected (method below) and measured.
-4. The dashboard shows the **original** true-colour image beside the **sand-detection overlay**
-   (sand pink, road yellow, analysis strip white, cloud / water / no-data grey) and the numbers.
-5. **Use in Field data panel** sends the result to the Environmental panel (section 5).
+### Research routes (source: KMZ files)
+
+The section analyses only the team's research routes. Each KMZ holds the road centreline and the
+study area, 2 km on each side of it. The files are kept unchanged in
+`data/satellite/routes/source/` and imported with `python3 python/import_routes.py`.
+
+| Route | KMZ file | Centreline | Length | Segments | Study area |
+|---|---|---|---|---|---|
+| **Route 3: Al-Ahsa – Salwa** | `Al_Ahsa_Salwa_Route3_2km_Study_Area.kmz` | "Route 3 - original GeoJSON line", 662 points | 152.7 km | 31 × ~4.9 km | 1,255-point polygon, 2 km each side |
+| **Route 4: Abqaiq – Salasil** | `Abqaiq_Salasil_Route4_2km_Study_Area.kmz` | "Abqaiq–Salasil route-4", 283 points | 46.2 km | 9 × ~5.1 km | 682-point polygon, 2 km each side |
+| **Route 5: Al-Ahsa – Riyadh** | `Al_Ahsa_Riyadh_Route5_2km_Study_Area.kmz` | "Road centerline (source route-5.geojson)", 1,383 points | 327.6 km | 66 × ~5.0 km | 3,332-point polygon, 2 km each side |
+
+Lengths are measured along the centreline in UTM (zone 39N; Route 5 also 38N west of 48° E).
+Chainage (km) starts at the first point of each line: Al-Ahsa for Routes 3 and 5, Abqaiq for
+Route 4. The two Route 4 files that were supplied are identical (same SHA-256); one copy is kept.
+
+**What the import does (`python/satellite/routes.py`)**
+1. Reads the single `doc.kml` in each KMZ: exactly one LineString (centreline) and one Polygon
+   (study area). Coordinates are copied **unchanged** into `routes/<route>.geojson`; only the
+   altitude (always 0) is dropped. A unit test compares every vertex with the KMZ.
+2. **Validates before anything is written:** KML lon/lat (EPSG:4326) inside Saudi Arabia (catches
+   swapped lat/lon or another CRS); altitudes all 0; closed polygon without holes; every
+   centreline point inside the study area; study-area half-width ≈ 2 km (measured: medians
+   2000 / 2000 / 2002 m, range 1997–2004 m); reprojection to UTM round-trips exactly.
+3. Cuts each centreline into equal **segments of about 5 km** (`--segment-km` to change). Each
+   segment gets one image: the box (in the UTM zone of its midpoint, on the 10 m Sentinel-2 grid)
+   around everything within 2.1 km of the segment, about 5–9 km a side.
+4. The **analysis area** of a segment is its part of the KMZ study area: pixels inside the
+   polygon that are closer to this segment than to the rest of the route. Neighbouring segments
+   never share a pixel and together cover the whole polygon (tested on Route 4: 187.995 km²).
+
+### What an analysis does
+1. Pick a **route**, a **segment** (km along the route) and an **observation date**.
+2. Before downloading, the segment geometry is checked (image on the grid and in the right UTM
+   zone, study area and road inside the image).
+3. The backend finds the nearest **clear** Sentinel-2 Level-2A scene (≤ 30 % tile cloud,
+   within ± 15 days) and reads bands B02, B03, B04, B08, B11, B12 and the Scene Classification
+   Layer (SCL) at 10 m. At least 90 % of the analysis area must have data. Near a tile or UTM
+   zone edge the image is completed from the neighbouring tile of the same pass (reprojected
+   when it is in the other zone); the tiles used are saved in `scene.mosaic_tiles`.
+4. Sand is detected (method below) and measured **inside the analysis area only**.
+5. The dashboard shows the **original** true-colour image beside the **overlay**: sand pink,
+   KMZ centreline yellow, the segment's 2 km study area outlined in cyan (outside it darkened),
+   the road buffer in white, cloud / water / no-data grey. It names the route, segment, scene
+   date and analysis area.
+6. **Use in Field data panel** sends the study-area values to the Environmental panel (section 5).
 
 | Source switch | Needs | Notes |
 |---|---|---|
-| **Cached (offline)** (default) | nothing | Reads `data/satellite/cache_manifest.js`; works by double-click |
-| **Live (Python backend)** | `satellite_server.py` + internet | Any date; also custom lat/lon; result is added to the cache |
+| **Cached (offline)** (default) | nothing | Reads `data/satellite/cache_manifest.js`; works by double-click. Only cached segments can be picked. |
+| **Live (Python backend)** | `satellite_server.py` + internet | Any segment, any date, road buffer 10–2000 m; also a custom lat/lon point (not a research route). Result is added to the cache. |
+
+**Road buffer:** the main values cover the 2 km study area. A smaller strip beside the road
+(default **200 m**, `CONFIG.SATELLITE_ROAD_BUFFER_M`, `?buffer_m=`, `--buffer-m`) gives extra
+measurements: sand, vegetation and bare-soil shares within that distance of the centreline.
 
 ### Included cached analyses (real imagery)
 
-| Location | Scene dates | Sand in 200 m road strip | Sand, whole area | Nearest sand to centreline |
-|---|---|---|---|---|
-| Divided highway across the Ad-Dahna sand belt (25.14° N, 48.27° E) | 2026-10-23, 2026-04-18 | 77.6 %, 81.1 % | 96.7 %, 97.5 % | 0 m |
-| Highway north-west of Salwa (24.89° N, 50.67° E) | 2026-10-20, 2026-01-18 | 47.9 %, 52.6 % | 54.4 %, 55.4 % | 10 m |
-| Highway south of the Salwa interchange (24.80° N, 50.72° E) | 2026-10-20, 2026-10-05 | 64.6 %, 69.6 % | 59.4 %, 55.3 % | 0 m |
+| Route | Segment | Scene (tile) | Analysis area | Sand, 2 km study area | Sand within 200 m | Nearest sand | Clear |
+|---|---|---|---|---|---|---|---|
+| Route 3: Al-Ahsa – Salwa | 1 of 31 · km 0.0–4.9 | 2026-10-20 (39RUJ) | 23.13 km² | 4.0 % | 1.4 % | 60 m | 100.0 % |
+| Route 3: Al-Ahsa – Salwa | 16 of 31 · km 73.9–78.8 | 2026-10-20 (39RVH) | 19.72 km² | 68.4 % | 28.3 % | 40 m | 100.0 % |
+| Route 3: Al-Ahsa – Salwa | 30 of 31 · km 142.9–147.8 | 2026-10-20 (39RVH) | 19.76 km² | 36.6 % | 7.1 % | 40 m | 54.3 % |
+| Route 4: Abqaiq – Salasil | 1 of 9 · km 0.0–5.1 | 2026-10-20 (39RUJ) | 25.77 km² | 18.2 % | 12.6 % | 20 m | 100.0 % |
+| Route 4: Abqaiq – Salasil | 3 of 9 · km 10.3–15.4 | 2026-10-08 (39RUJ) | 20.54 km² | 46.4 % | 20.3 % | 10 m | 100.0 % |
+| Route 4: Abqaiq – Salasil | 5 of 9 · km 20.5–25.7 | 2026-10-18 (39RUJ) | 20.66 km² | 40.4 % | 32.8 % | 10 m | 100.0 % |
+| Route 4: Abqaiq – Salasil | 9 of 9 · km 41.1–46.2 | 2026-10-18 (39RUJ) | 25.68 km² | 43.8 % | 8.9 % | 40 m | 100.0 % |
+| Route 5: Al-Ahsa – Riyadh | 1 of 66 · km 0.0–5.0 | 2026-10-20 (39RUJ) | 23.71 km² | 14.8 % | 11.0 % | 10 m | 100.0 % |
+| Route 5: Al-Ahsa – Riyadh | 29 of 66 · km 139.0–144.0 | 2026-10-18 (39RTH) | 19.88 km² | 95.4 % | 75.4 % | 10 m | 100.0 % |
+| Route 5: Al-Ahsa – Riyadh | 34 of 66 · km 163.8–168.8 | 2026-10-18 (38RQN) | 20.12 km² | 92.2 % | 82.3 % | 0 m | 100.0 % |
+| Route 5: Al-Ahsa – Riyadh | 35 of 66 · km 168.8–173.7 | 2026-10-18 (38RQN) | 19.53 km² | 79.4 % | 77.8 % | 0 m | 100.0 % |
+| Route 5: Al-Ahsa – Riyadh | 66 of 66 · km 322.7–327.6 | 2026-10-21 (38RPN) | 25.83 km² | 1.8 % | 1.0 % | 0 m | 100.0 % |
 
-Values come from `result.json` in each cache folder (rule-based estimates, see below).
+Route 3 segment 30 reaches the Gulf of Salwa: the sea in its study area is water, not counted (54 % clear).
+Route 5 segments 34 and 35 lie either side of the 48° E UTM zone boundary.
+
+Values come from `result.json` in each cache folder (rule-based estimates, see below). Other
+segments: switch to Live, or cache them with `satellite_cache.py` (below).
 
 ### Setup
 ```bash
@@ -514,35 +587,39 @@ The page also works from `index.html` by double-click; it calls `CONFIG.SATELLIT
 |---|---|---|
 | **Copernicus Data Space Ecosystem** OAuth client | Recommended (preferred provider) | 1. Create a free account at <https://dataspace.copernicus.eu>. 2. Open the Sentinel Hub dashboard <https://shapps.dataspace.copernicus.eu/dashboard/> → **User settings** → **OAuth clients** → **Create**. 3. Copy the client ID and secret (the secret is shown once). 4. Set them before starting the server: `export CDSE_CLIENT_ID=…` and `export CDSE_CLIENT_SECRET=…` (Windows: `set CDSE_CLIENT_ID=…`). Free accounts have a monthly processing quota. |
 | No credentials | Works | Falls back to the public **AWS Open Data** Sentinel-2 L2A archive (Element 84 COGs), no account. |
-| Road geometry | Optional | Shipped: hand-traced centrelines for the 3 locations. Better: `python3 python/satellite_cache.py --refresh-roads` (OpenStreetMap via Overpass, needs internet), or put your own `data/satellite/roads/<id>.geojson` (LineString, WGS84). Live custom points try OpenStreetMap automatically. |
+| Road geometry | Included | Research routes: the KMZ centrelines and study areas. Updated KMZ: replace the file in `routes/source/` and run `python3 python/import_routes.py`. Custom points (Live only) try OpenStreetMap and save it as `data/satellite/roads/<id>.geojson`. |
 | Proxy / company network | Only if HTTPS fails | Set `REQUESTS_CA_BUNDLE` (and `CURL_CA_BUNDLE` for GDAL) to your CA file. |
-| `js/config.js` | Optional | `SATELLITE_API_BASE`, `SATELLITE_DEFAULT_SOURCE` (`"cache"`/`"live"`), `SATELLITE_REQUEST_TIMEOUT_MS`. |
+| `js/config.js` | Optional | `SATELLITE_API_BASE`, `SATELLITE_DEFAULT_SOURCE` (`"cache"`/`"live"`), `SATELLITE_REQUEST_TIMEOUT_MS`, `SATELLITE_ROAD_BUFFER_M`. |
 
 The server shows which provider it uses at start-up and in `GET /api/satellite/status`.
 Force one with `?provider=cdse|aws` or `satellite_cache.py --provider cdse`.
 
 ### Offline cache
 ```bash
-python3 python/satellite_cache.py                        # every location at its default date
-python3 python/satellite_cache.py --location dahna_highway --date 2026-07-15
-python3 python/satellite_cache.py --lat 24.90 --lon 50.65 --date 2026-10-20
-python3 python/satellite_cache.py --list                 # what is cached
-python3 python/satellite_cache.py --manifest-only        # rebuild cache_manifest.js
+python3 python/import_routes.py                                  # after changing a KMZ
+python3 python/satellite_cache.py --list-segments                # routes, segments, km, centres
+python3 python/satellite_cache.py --route 3 --segments 1,16,30   # default date 2026-10-20
+python3 python/satellite_cache.py --route 5 --segments 29 --date 2026-07-15 --buffer-m 500
+python3 python/satellite_cache.py --route 4 --all-segments       # a whole route
+python3 python/satellite_cache.py                                # refresh everything cached
+python3 python/satellite_cache.py --list                         # what is cached
+python3 python/satellite_cache.py --manifest-only                # rebuild cache_manifest.js
 ```
-Each run writes `data/satellite/cache/<location>/<scene date>/` and regenerates
+Each run writes `data/satellite/cache/<segment>/<scene date>/` (about 0.4 MB) and regenerates
 `cache_manifest.js`. Run it before a demo (or analyse live once); the images then show without
-internet. New locations: add an entry to `data/satellite/locations.json`.
+internet.
 
 ### API (`satellite_server.py`)
 | Request | Returns |
 |---|---|
-| `GET /api/satellite/status` | provider, whether CDSE is configured, number of cached analyses |
-| `GET /api/satellite/locations` | `locations.json` |
-| `GET /api/satellite/analysis?location=<id>&date=YYYY-MM-DD` | runs a live analysis (saved to cache) |
+| `GET /api/satellite/status` | provider, whether CDSE is configured, cached analyses, routes |
+| `GET /api/satellite/routes` (also `/locations`) | routes with their segments (`routes.json`) |
+| `GET /api/satellite/analysis?segment=<id>&date=YYYY-MM-DD[&buffer_m=200]` | runs a live analysis (saved to cache); `location=<id>` also works |
 | `…&mode=cache` | the cached result for that scene date, or 404 |
 | `GET /api/satellite/analysis?lat=..&lon=..&date=..` | custom point (road from OpenStreetMap if reachable) |
 
-Errors come back as `{"error", "hint"}` (422 no usable scene, 502 network, 404 unknown).
+Segment ids look like `route3_al_ahsa_salwa_s16`. Errors come back as `{"error", "hint"}`
+(400 bad input, 422 no usable scene or invalid geometry, 502 network, 404 unknown).
 
 ### Sand detection method (`python/satellite/processing.py`)
 1. **Valid pixels:** SCL removes no-data, saturated, cloud (medium / high), cirrus, cloud shadow
@@ -564,15 +641,15 @@ All parameters are listed at the top of `processing.py` and saved in every `resu
 ### Measurements (`result.json` → `measurements`)
 | Field | Meaning |
 |---|---|
-| `sand_coverage_pct` | Sand share of valid pixels within `buffer_m` (200 m) of the road centreline |
-| `vegetation_coverage_pct`, `bare_soil_pct` | Same strip; bare soil = other bare ground (gravel, rock, sabkha, paved) |
-| `distance_to_road_m` | Distance from the road **centreline** to the nearest detected sand pixel, in 10 m steps. `0` = sand in the centreline pixel; on a divided highway this includes a sandy median. |
-| `area_*_pct` | The same shares for the whole 5 × 5 km area |
-| `valid_pct`, `cloud_pct` | Share of the area that was usable / cloudy |
+| `area_sand_coverage_pct`, `area_vegetation_pct`, `area_other_bare_pct` | Shares of valid pixels in the **analysis area**: the segment's part of the 2 km study area (whole image for a custom point) |
+| `area_km2`, `image_km2` | Size of the analysis area and of the image |
+| `sand_coverage_pct`, `vegetation_coverage_pct`, `bare_soil_pct` | The same within `buffer_m` (road buffer) of the centreline, inside the analysis area; bare soil = other bare ground (gravel, rock, sabkha, paved) |
+| `distance_to_road_m` | Distance from the road **centreline** to the nearest detected sand pixel in the analysis area, in 10 m steps. `0` = sand in the centreline pixel; on a divided highway this includes a sandy median. |
+| `valid_pct`, `cloud_pct` | Share of the analysis area that was usable / cloudy (water, e.g. the sea at Salwa, is not usable) |
 
-Without valid road geometry (none available, or it does not cross the area) the strip values and
-distance are `null` with `distance_to_road_m_reason`; the Field data panel then uses the
-whole-area shares and says so.
+`result.json` also records `route`, `segment` (index, km from–to), `analysis_area` and the
+`road` source (KMZ). For a custom point without valid road geometry the buffer values and
+distance are `null` with `distance_to_road_m_reason`.
 
 ### Honesty rules built in
 - Every number comes from Sentinel-2 pixels; nothing is filled in or simulated. Unknown = `null` → "—".
@@ -584,8 +661,9 @@ whole-area shares and says so.
 ### Limitations
 - Rule-based detection, not validated against field surveys. Pale sand, sabkha and caprock with
   sand-like colour can be confused; mixed 10 m pixels blur edges. Treat values as estimates.
-- The shipped road centrelines were traced by hand on the images (± 10–20 m) and cover the main
-  carriageway only. Replace them with OpenStreetMap (`--refresh-roads`) when online.
+- Road and study area are exactly as in the KMZ files; their accuracy is that of the KMZ. The
+  centreline is one line per route, so on a divided highway the distance is to that line.
+- Only 12 of the 106 segments are cached; the others need Live (internet) or `satellite_cache.py`.
 - Distance is measured to the centreline, not the paved edge (road width is not known).
 - 10 m pixels cannot see a thin sand film on asphalt; the result describes sand around the road.
 - The scene is the nearest clear one to the chosen date (the date used is always shown).

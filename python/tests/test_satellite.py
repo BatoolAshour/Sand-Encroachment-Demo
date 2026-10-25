@@ -5,7 +5,9 @@ Offline tests for the satellite pipeline (no internet needed).
     python -m unittest discover -s tests -v
 
 Synthetic scenes check the processing rules and the road-distance logic;
-the cache tests check the real Sentinel-2 results shipped in data/satellite.
+the route tests check the research-route import (KMZ -> GeoJSON, unchanged
+coordinates, validation, segments); the cache tests check the real
+Sentinel-2 results shipped in data/satellite.
 """
 
 import json
@@ -18,7 +20,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from satellite import processing, roads                                  # noqa: E402
-from satellite.analysis import CACHE_DIR, LOCATIONS_FILE, REPO_ROOT       # noqa: E402
+from satellite import routes as R                                        # noqa: E402
+from satellite.analysis import CACHE_DIR, REPO_ROOT, find_segment, load_routes, prepare_segment  # noqa: E402
 from satellite.providers import BandData, make_area                      # noqa: E402
 
 SAND = {"B02": 0.11, "B03": 0.22, "B04": 0.34, "B08": 0.40, "B11": 0.53, "B12": 0.46}    # orange dune sand
@@ -151,31 +154,140 @@ class CdseProviderTests(unittest.TestCase):
                             for url, kw in calls if "token" not in url))
 
 
+class RegionMeasureTests(unittest.TestCase):
+    def test_measurements_only_inside_region(self):
+        area = make_area(24.8, 50.7, 2000)
+        layout = np.full((200, 200), "gravel", dtype=object)
+        layout[:, 100] = "asphalt"
+        layout[:, :60] = "sand"                       # sand far west, outside the region below
+        layout[:, 150:] = "sand"                      # sand 500 m east, inside the region
+        line = roads.pixel_line_to_geojson(area, [(100, 0), (100, 199)])
+        dist, _ = roads.road_distance(area, {"type": "LineString", "coordinates": line})
+        region = np.zeros((200, 200), bool)
+        region[:, 70:] = True                         # 130 columns
+        masks, _ = processing.detect_sand(synthetic(layout, area=area))
+        m = processing.measure(masks, dist, buffer_m=200, region=region)
+        self.assertEqual(m["distance_to_road_m"], 500)            # the western sand is ignored
+        self.assertAlmostEqual(m["area_sand_coverage_pct"], 100 * 50 / 130, delta=2)
+        self.assertEqual(m["sand_coverage_pct"], 0.0)             # nothing within 200 m
+        self.assertEqual(m["area_km2"], 2.6)
+
+
+class RouteTests(unittest.TestCase):
+    """The research routes: KMZ files in data/satellite/routes/source/."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.routes = load_routes()
+
+    def test_three_research_routes(self):
+        self.assertEqual([r["number"] for r in self.routes], [3, 4, 5])
+        for r in self.routes:
+            self.assertTrue((REPO_ROOT / r["source_kmz"]).exists(), r["source_kmz"])
+
+    def test_kmz_coordinates_preserved_exactly(self):
+        for r in self.routes:
+            kmz = R.import_kmz(REPO_ROOT / r["source_kmz"])
+            self.assertEqual(kmz["sha256"], r["sha256"])
+            line, ring, _ = R.load_route_geometry(REPO_ROOT / r["geojson"])
+            self.assertEqual(line, kmz["centerline"], r["id"])     # every vertex, same floats
+            self.assertEqual(ring, kmz["study_area"], r["id"])
+            # and the same numbers as written in the KML text
+            import re
+            import zipfile
+            with zipfile.ZipFile(REPO_ROOT / r["source_kmz"]) as z:
+                text = z.read("doc.kml").decode("utf-8")
+            first = re.search(r"<LineString>.*?<coordinates>\s*([^\s<]+)", text, re.S).group(1).split(",")
+            self.assertEqual(line[0], [float(first[0]), float(first[1])])
+
+    def test_routes_validate(self):
+        for r in self.routes:
+            report = R.validate_route(R.import_kmz(REPO_ROOT / r["source_kmz"]))
+            self.assertTrue(report["centerline_inside_study_area"])
+            self.assertAlmostEqual(report["study_half_width_m"]["median_m"], 2000, delta=10)
+            self.assertAlmostEqual(report["length_m"], r["length_m"], delta=1)
+
+    def test_validation_rejects_bad_geometry(self):
+        good = R.import_kmz(REPO_ROOT / self.routes[1]["source_kmz"])
+        swapped = {**good, "centerline": [[la, lo] for lo, la in good["centerline"]]}
+        with self.assertRaisesRegex(R.RouteError, "outside Saudi Arabia"):
+            R.validate_route(swapped)
+        open_ring = {**good, "study_area": good["study_area"][:-1]}
+        with self.assertRaisesRegex(R.RouteError, "closed ring"):
+            R.validate_route(open_ring)
+        shifted = {**good, "centerline": [[lo + 0.1, la] for lo, la in good["centerline"]]}
+        with self.assertRaisesRegex(R.RouteError, "outside the study area"):
+            R.validate_route(shifted)
+
+    def test_segments_cover_the_whole_route(self):
+        for r in self.routes:
+            segs = r["segments"]
+            self.assertEqual(segs[0]["start_m"], 0.0)
+            self.assertAlmostEqual(segs[-1]["end_m"], r["length_m"], delta=0.2)
+            for a, b in zip(segs, segs[1:]):
+                self.assertEqual(a["end_m"], b["start_m"])
+            for seg in segs:
+                self.assertTrue(4000 <= seg["length_m"] <= 6000, seg["id"])
+                self.assertLessEqual(max(seg["width_m"], seg["height_m"]), 10000, seg["id"])
+
+    def test_segment_areas_split_the_study_area_without_overlap(self):
+        r = next(x for x in self.routes if x["number"] == 4)          # one UTM zone, fast
+        owner = {}
+        for seg in r["segments"]:
+            area, region, *_ = prepare_segment(find_segment(seg["id"]))
+            rows, cols = np.nonzero(region)
+            for key in zip((area.bounds[0] // 10 + cols).tolist(), (area.bounds[3] // 10 - rows).tolist()):
+                self.assertNotIn(key, owner)
+                owner[key] = seg["index"]
+        line, ring, _ = R.load_route_geometry(REPO_ROOT / r["geojson"])
+        xy = R.to_utm(ring, r["segments"][0]["epsg"])
+        polygon_km2 = 0.5 * abs(np.dot(xy[:, 0], np.roll(xy[:, 1], 1)) - np.dot(xy[:, 1], np.roll(xy[:, 0], 1))) / 1e6
+        self.assertAlmostEqual(len(owner) * 100 / 1e6, polygon_km2, delta=polygon_km2 * 0.005)
+
+
+class AwsTileTests(unittest.TestCase):
+    def test_zone_edge_falls_back_to_an_existing_tile(self):
+        """Near 48°E the centre's MGRS square (39RSH) is not a Sentinel-2 tile."""
+        from unittest import mock
+
+        from satellite.providers import AwsCogProvider, area_from_bounds
+
+        seg = find_segment("route5_al_ahsa_riyadh_s34")["segment"]
+        area = area_from_bounds(seg["center"][1], seg["center"][0], seg["epsg"], seg["bounds_utm"])
+        listed = []
+
+        def fake_list(self, prefix):
+            listed.append(prefix)
+            return [] if "/39/R/SH/" in prefix else ["S2B_38RQN_20261018_0_L2A"]
+
+        item = {"properties": {"eo:cloud_cover": 1.0, "datetime": "2026-10-18T07:30:00Z"}}
+        with mock.patch.object(AwsCogProvider, "_list", fake_list), \
+             mock.patch.object(AwsCogProvider, "_item", lambda self, sc: item):
+            scenes = AwsCogProvider().find_scene(area, "2026-10-20")
+        self.assertIn("/39/R/SH/", listed[0])
+        self.assertEqual(scenes[0].scene_id, "S2B_38RQN_20261018_0_L2A")
+        self.assertEqual(scenes[0].extra["tile"], "38RQN")
+
+
 class CacheTests(unittest.TestCase):
     """The shipped real analyses are complete and self-consistent."""
 
     def test_cached_results(self):
         results = [json.loads(p.read_text()) for p in CACHE_DIR.glob("*/*/result.json")]
-        self.assertGreaterEqual(len(results), 3)
+        self.assertGreaterEqual(len(results), 9)
+        segment_ids = {s["id"] for r in load_routes() for s in r["segments"]}
         for r in results:
             self.assertEqual(r["data_kind"], "satellite-derived")
+            self.assertIn(r["location"]["id"], segment_ids)          # no demo locations left
+            self.assertEqual(r["segment"]["id"], r["location"]["id"])
+            self.assertEqual(r["road"]["method"], "kmz")
             self.assertRegex(r["scene"]["id"], r"^S2[ABC]_\w{5}_\d{8}_\d+_L2A$")
             for img in r["images"].values():
                 self.assertTrue((REPO_ROOT / img).exists(), img)
             m = r["measurements"]
             self.assertTrue(0 <= m["area_sand_coverage_pct"] <= 100)
-            if r["road"]["available"]:
-                self.assertIsNotNone(m["sand_coverage_pct"])
-            else:
-                self.assertIsNone(m["distance_to_road_m"])
-
-    def test_every_location_has_valid_road(self):
-        for loc in json.loads(LOCATIONS_FILE.read_text())["locations"]:
-            area = make_area(loc["lat"], loc["lon"], loc["size_m"])
-            geom, _ = roads.load_road(REPO_ROOT / "data/satellite/roads" / f"{loc['id']}.geojson")
-            self.assertIsNotNone(geom, loc["id"])
-            dist, reason = roads.road_distance(area, geom)
-            self.assertIsNone(reason, loc["id"])
+            self.assertIsNotNone(m["sand_coverage_pct"])
+            self.assertLess(m["area_km2"], m["image_km2"])
 
 
 if __name__ == "__main__":

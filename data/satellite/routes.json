@@ -1,0 +1,2876 @@
+{
+ "description": "Research routes for the Satellite Monitoring section, imported from the KMZ files in routes/source/ by python/import_routes.py. Do not edit by hand.",
+ "study_half_width_m": 2000,
+ "segment_length_m": 5000,
+ "default_road_buffer_m": 200,
+ "routes": [
+  {
+   "id": "route3_al_ahsa_salwa",
+   "number": 3,
+   "name": "Route 3: Al-Ahsa – Salwa",
+   "from": "Al-Ahsa",
+   "to": "Salwa",
+   "source_kmz": "data/satellite/routes/source/Al_Ahsa_Salwa_Route3_2km_Study_Area.kmz",
+   "kml_document": "Al Ahsa - Salwa Route 3 | 2 km study area",
+   "sha256": "a64f71c0f94ffb9e7d8cdd3a96364d485dfbd34f955588bcb76fca261416540f",
+   "geojson": "data/satellite/routes/route3_al_ahsa_salwa.geojson",
+   "length_m": 152722.7,
+   "study_half_width_m": 2000,
+   "default_date": "2026-10-20",
+   "validation": {
+    "crs": "EPSG:4326 (KML lon/lat)",
+    "analysis_crs": [
+     "EPSG:32639"
+    ],
+    "centerline_points": 662,
+    "study_area_points": 1255,
+    "centerline_inside_study_area": true,
+    "study_half_width_m": {
+     "min_m": 1996.8,
+     "median_m": 2000.0,
+     "max_m": 2000.0
+    },
+    "length_m": 152722.7,
+    "bbox_wgs84": [
+     49.58214,
+     24.74015,
+     50.75833,
+     25.36964
+    ]
+   },
+   "segments": [
+    {
+     "id": "route3_al_ahsa_salwa_s01",
+     "index": 1,
+     "start_m": 0.0,
+     "end_m": 4926.5,
+     "length_m": 4926.5,
+     "center": [
+      49.591556,
+      25.356775
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      355240,
+      2802000,
+      362310,
+      2808740
+     ],
+     "bounds_wgs84": [
+      49.560989,
+      25.327594,
+      49.631938,
+      25.389112
+     ],
+     "width_m": 7070,
+     "height_m": 6740
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s02",
+     "index": 2,
+     "start_m": 4926.5,
+     "end_m": 9853.1,
+     "length_m": 4926.5,
+     "center": [
+      49.629329,
+      25.333499
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      358100,
+      2798700,
+      365850,
+      2806210
+     ],
+     "bounds_wgs84": [
+      49.589678,
+      25.298077,
+      49.66743,
+      25.366594
+     ],
+     "width_m": 7750,
+     "height_m": 7510
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s03",
+     "index": 3,
+     "start_m": 9853.1,
+     "end_m": 14779.6,
+     "length_m": 4926.5,
+     "center": [
+      49.661847,
+      25.300381
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      361640,
+      2794900,
+      368990,
+      2802910
+     ],
+     "bounds_wgs84": [
+      49.62519,
+      25.264102,
+      49.69898,
+      25.33708
+     ],
+     "width_m": 7350,
+     "height_m": 8010
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s04",
+     "index": 4,
+     "start_m": 14779.6,
+     "end_m": 19706.2,
+     "length_m": 4926.5,
+     "center": [
+      49.693996,
+      25.275908
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      364780,
+      2793830,
+      373060,
+      2799110
+     ],
+     "bounds_wgs84": [
+      49.656762,
+      25.254728,
+      49.73949,
+      25.303124
+     ],
+     "width_m": 8280,
+     "height_m": 5280
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s05",
+     "index": 5,
+     "start_m": 19706.2,
+     "end_m": 24632.7,
+     "length_m": 4926.5,
+     "center": [
+      49.742766,
+      25.278298
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      368850,
+      2794130,
+      377930,
+      2798600
+     ],
+     "bounds_wgs84": [
+      49.697233,
+      25.257799,
+      49.787813,
+      25.298925
+     ],
+     "width_m": 9080,
+     "height_m": 4470
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s06",
+     "index": 6,
+     "start_m": 24632.7,
+     "end_m": 29559.2,
+     "length_m": 4926.5,
+     "center": [
+      49.789475,
+      25.287487
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      373720,
+      2794390,
+      382560,
+      2799460
+     ],
+     "bounds_wgs84": [
+      49.74552,
+      25.260565,
+      49.83376,
+      25.307061
+     ],
+     "width_m": 8840,
+     "height_m": 5070
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s07",
+     "index": 7,
+     "start_m": 29559.2,
+     "end_m": 34485.8,
+     "length_m": 4926.5,
+     "center": [
+      49.834909,
+      25.272357
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      378350,
+      2792930,
+      387180,
+      2798760
+     ],
+     "bounds_wgs84": [
+      49.791569,
+      25.247766,
+      49.879753,
+      25.301096
+     ],
+     "width_m": 8830,
+     "height_m": 5830
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s08",
+     "index": 8,
+     "start_m": 34485.8,
+     "end_m": 39412.3,
+     "length_m": 4926.5,
+     "center": [
+      49.879261,
+      25.255695
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      382970,
+      2790180,
+      391240,
+      2797140
+     ],
+     "bounds_wgs84": [
+      49.837595,
+      25.223305,
+      49.920281,
+      25.28677
+     ],
+     "width_m": 8270,
+     "height_m": 6960
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s09",
+     "index": 9,
+     "start_m": 39412.3,
+     "end_m": 44338.9,
+     "length_m": 4926.5,
+     "center": [
+      49.918679,
+      25.229407
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      387030,
+      2786810,
+      394710,
+      2794390
+     ],
+     "bounds_wgs84": [
+      49.878143,
+      25.193188,
+      49.954984,
+      25.262188
+     ],
+     "width_m": 7680,
+     "height_m": 7580
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s10",
+     "index": 10,
+     "start_m": 44338.9,
+     "end_m": 49265.4,
+     "length_m": 4926.5,
+     "center": [
+      49.939887,
+      25.191025
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      390500,
+      2782120,
+      396110,
+      2791020
+     ],
+     "bounds_wgs84": [
+      49.912868,
+      25.151098,
+      49.969234,
+      25.231857
+     ],
+     "width_m": 5610,
+     "height_m": 8900
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s11",
+     "index": 11,
+     "start_m": 49265.4,
+     "end_m": 54191.9,
+     "length_m": 4926.5,
+     "center": [
+      49.961225,
+      25.151516
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      391900,
+      2777810,
+      398480,
+      2786330
+     ],
+     "bounds_wgs84": [
+      49.927137,
+      25.112282,
+      49.993065,
+      25.189671
+     ],
+     "width_m": 6580,
+     "height_m": 8520
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s12",
+     "index": 12,
+     "start_m": 54191.9,
+     "end_m": 59118.5,
+     "length_m": 4926.5,
+     "center": [
+      49.982768,
+      25.111591
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      394270,
+      2773620,
+      401030,
+      2782020
+     ],
+     "bounds_wgs84": [
+      49.950988,
+      25.074617,
+      50.018656,
+      25.150924
+     ],
+     "width_m": 6760,
+     "height_m": 8400
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s13",
+     "index": 13,
+     "start_m": 59118.5,
+     "end_m": 64045.0,
+     "length_m": 4926.5,
+     "center": [
+      50.013166,
+      25.076831
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      396820,
+      2769840,
+      404180,
+      2777830
+     ],
+     "bounds_wgs84": [
+      49.9766,
+      25.040662,
+      50.05015,
+      25.113294
+     ],
+     "width_m": 7360,
+     "height_m": 7990
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s14",
+     "index": 14,
+     "start_m": 64045.0,
+     "end_m": 68971.6,
+     "length_m": 4926.5,
+     "center": [
+      50.046376,
+      25.044265
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      399970,
+      2767160,
+      408160,
+      2774050
+     ],
+     "bounds_wgs84": [
+      50.008115,
+      25.016674,
+      50.089778,
+      25.079409
+     ],
+     "width_m": 8190,
+     "height_m": 6890
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s15",
+     "index": 15,
+     "start_m": 68971.6,
+     "end_m": 73898.1,
+     "length_m": 4926.5,
+     "center": [
+      50.092223,
+      25.029865
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      403950,
+      2766390,
+      412930,
+      2771370
+     ],
+     "bounds_wgs84": [
+      50.047763,
+      25.009979,
+      50.137097,
+      25.055491
+     ],
+     "width_m": 8980,
+     "height_m": 4980
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s16",
+     "index": 16,
+     "start_m": 73898.1,
+     "end_m": 78824.6,
+     "length_m": 4926.5,
+     "center": [
+      50.14017,
+      25.036532
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      408720,
+      2766750,
+      417780,
+      2771390
+     ],
+     "bounds_wgs84": [
+      50.095047,
+      25.013524,
+      50.185137,
+      25.055943
+     ],
+     "width_m": 9060,
+     "height_m": 4640
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s17",
+     "index": 17,
+     "start_m": 78824.6,
+     "end_m": 83751.2,
+     "length_m": 4926.5,
+     "center": [
+      50.188582,
+      25.032655
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      413570,
+      2766150,
+      422610,
+      2770960
+     ],
+     "bounds_wgs84": [
+      50.143153,
+      25.008391,
+      50.233036,
+      25.052315
+     ],
+     "width_m": 9040,
+     "height_m": 4810
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s18",
+     "index": 18,
+     "start_m": 83751.2,
+     "end_m": 88677.7,
+     "length_m": 4926.5,
+     "center": [
+      50.234499,
+      25.019089
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      418400,
+      2764120,
+      427090,
+      2770360
+     ],
+     "bounds_wgs84": [
+      50.191068,
+      24.990328,
+      50.277539,
+      25.04712
+     ],
+     "width_m": 8690,
+     "height_m": 6240
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s19",
+     "index": 19,
+     "start_m": 88677.7,
+     "end_m": 93604.3,
+     "length_m": 4926.5,
+     "center": [
+      50.276992,
+      24.997495
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      422880,
+      2761390,
+      431190,
+      2768330
+     ],
+     "bounds_wgs84": [
+      50.23559,
+      24.96591,
+      50.318299,
+      25.02898
+     ],
+     "width_m": 8310,
+     "height_m": 6940
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s20",
+     "index": 20,
+     "start_m": 93604.3,
+     "end_m": 98530.8,
+     "length_m": 4926.5,
+     "center": [
+      50.316637,
+      24.971596
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      426980,
+      2758350,
+      435070,
+      2765600
+     ],
+     "bounds_wgs84": [
+      50.276371,
+      24.93866,
+      50.356879,
+      25.004499
+     ],
+     "width_m": 8090,
+     "height_m": 7250
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s21",
+     "index": 21,
+     "start_m": 98530.8,
+     "end_m": 103457.3,
+     "length_m": 4926.5,
+     "center": [
+      50.355248,
+      24.944387
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      430860,
+      2755620,
+      439150,
+      2762560
+     ],
+     "bounds_wgs84": [
+      50.314972,
+      24.914188,
+      50.397409,
+      24.977215
+     ],
+     "width_m": 8290,
+     "height_m": 6940
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s22",
+     "index": 22,
+     "start_m": 103457.3,
+     "end_m": 108383.9,
+     "length_m": 4926.5,
+     "center": [
+      50.398032,
+      24.923054
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      434940,
+      2753290,
+      443490,
+      2759830
+     ],
+     "bounds_wgs84": [
+      50.355522,
+      24.893327,
+      50.440481,
+      24.952729
+     ],
+     "width_m": 8550,
+     "height_m": 6540
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s23",
+     "index": 23,
+     "start_m": 108383.9,
+     "end_m": 113310.4,
+     "length_m": 4926.5,
+     "center": [
+      50.439472,
+      24.899759
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      439280,
+      2750410,
+      447490,
+      2757500
+     ],
+     "bounds_wgs84": [
+      50.398614,
+      24.867497,
+      50.480193,
+      24.931831
+     ],
+     "width_m": 8210,
+     "height_m": 7090
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s24",
+     "index": 24,
+     "start_m": 113310.4,
+     "end_m": 118237.0,
+     "length_m": 4926.5,
+     "center": [
+      50.479441,
+      24.874311
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      443280,
+      2747780,
+      451650,
+      2754620
+     ],
+     "bounds_wgs84": [
+      50.438347,
+      24.8439,
+      50.521464,
+      24.90596
+     ],
+     "width_m": 8370,
+     "height_m": 6840
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s25",
+     "index": 25,
+     "start_m": 118237.0,
+     "end_m": 123163.5,
+     "length_m": 4926.5,
+     "center": [
+      50.521641,
+      24.852015
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      447440,
+      2745740,
+      456090,
+      2751990
+     ],
+     "bounds_wgs84": [
+      50.479639,
+      24.825626,
+      50.565472,
+      24.882343
+     ],
+     "width_m": 8650,
+     "height_m": 6250
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s26",
+     "index": 26,
+     "start_m": 123163.5,
+     "end_m": 128090.0,
+     "length_m": 4926.5,
+     "center": [
+      50.568157,
+      24.839121
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      451880,
+      2744380,
+      460830,
+      2749950
+     ],
+     "bounds_wgs84": [
+      50.523665,
+      24.813491,
+      50.612415,
+      24.864049
+     ],
+     "width_m": 8950,
+     "height_m": 5570
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s27",
+     "index": 27,
+     "start_m": 128090.0,
+     "end_m": 133016.6,
+     "length_m": 4926.5,
+     "center": [
+      50.61516,
+      24.831191
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      456620,
+      2744020,
+      465620,
+      2748920
+     ],
+     "bounds_wgs84": [
+      50.570617,
+      24.810381,
+      50.65982,
+      24.854863
+     ],
+     "width_m": 9000,
+     "height_m": 4900
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s28",
+     "index": 28,
+     "start_m": 133016.6,
+     "end_m": 137943.1,
+     "length_m": 4926.5,
+     "center": [
+      50.663058,
+      24.832586
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      461410,
+      2744240,
+      470510,
+      2748920
+     ],
+     "bounds_wgs84": [
+      50.618029,
+      24.812497,
+      50.7082,
+      24.854965
+     ],
+     "width_m": 9100,
+     "height_m": 4680
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s29",
+     "index": 29,
+     "start_m": 137943.1,
+     "end_m": 142869.7,
+     "length_m": 4926.5,
+     "center": [
+      50.709246,
+      24.826412
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      466300,
+      2742950,
+      475050,
+      2748650
+     ],
+     "bounds_wgs84": [
+      50.666437,
+      24.800962,
+      50.753146,
+      24.852608
+     ],
+     "width_m": 8750,
+     "height_m": 5700
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s30",
+     "index": 30,
+     "start_m": 142869.7,
+     "end_m": 147796.2,
+     "length_m": 4926.5,
+     "center": [
+      50.741802,
+      24.802395
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      470840,
+      2738530,
+      476230,
+      2747160
+     ],
+     "bounds_wgs84": [
+      50.711404,
+      24.761137,
+      50.764896,
+      24.83917
+     ],
+     "width_m": 5390,
+     "height_m": 8630
+    },
+    {
+     "id": "route3_al_ahsa_salwa_s31",
+     "index": 31,
+     "start_m": 147796.2,
+     "end_m": 152722.7,
+     "length_m": 4926.5,
+     "center": [
+      50.750624,
+      24.7594
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      472020,
+      2734090,
+      477670,
+      2742740
+     ],
+     "bounds_wgs84": [
+      50.723171,
+      24.72106,
+      50.779209,
+      24.799274
+     ],
+     "width_m": 5650,
+     "height_m": 8650
+    }
+   ]
+  },
+  {
+   "id": "route4_abqaiq_salasil",
+   "number": 4,
+   "name": "Route 4: Abqaiq – Salasil",
+   "from": "Abqaiq",
+   "to": "Salasil",
+   "source_kmz": "data/satellite/routes/source/Abqaiq_Salasil_Route4_2km_Study_Area.kmz",
+   "kml_document": "Abqaiq–Salasil | 2 km study corridor (route-4)",
+   "sha256": "5a81976f83a06f46dc62c5aea7c668cd2f7eafacc25cb28cce22018c00311e77",
+   "geojson": "data/satellite/routes/route4_abqaiq_salasil.geojson",
+   "length_m": 46190.5,
+   "study_half_width_m": 2000,
+   "default_date": "2026-10-20",
+   "validation": {
+    "crs": "EPSG:4326 (KML lon/lat)",
+    "analysis_crs": [
+     "EPSG:32639"
+    ],
+    "centerline_points": 283,
+    "study_area_points": 682,
+    "centerline_inside_study_area": true,
+    "study_half_width_m": {
+     "min_m": 1997.7,
+     "median_m": 2000.0,
+     "max_m": 2000.0
+    },
+    "length_m": 46190.5,
+    "bbox_wgs84": [
+     49.4302,
+     25.93201,
+     49.66914,
+     26.15334
+    ]
+   },
+   "segments": [
+    {
+     "id": "route4_abqaiq_salasil_s01",
+     "index": 1,
+     "start_m": 0.0,
+     "end_m": 5132.3,
+     "length_m": 5132.3,
+     "center": [
+      49.654379,
+      25.944151
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      362330,
+      2866730,
+      368830,
+      2874720
+     ],
+     "bounds_wgs84": [
+      49.624628,
+      25.91263,
+      49.69035,
+      25.985361
+     ],
+     "width_m": 6500,
+     "height_m": 7990
+    },
+    {
+     "id": "route4_abqaiq_salasil_s02",
+     "index": 2,
+     "start_m": 5132.3,
+     "end_m": 10264.5,
+     "length_m": 5132.3,
+     "center": [
+      49.636996,
+      25.987707
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      359840,
+      2870510,
+      366540,
+      2879060
+     ],
+     "bounds_wgs84": [
+      49.599293,
+      25.946516,
+      49.667106,
+      26.024331
+     ],
+     "width_m": 6700,
+     "height_m": 8550
+    },
+    {
+     "id": "route4_abqaiq_salasil_s03",
+     "index": 3,
+     "start_m": 10264.5,
+     "end_m": 15396.8,
+     "length_m": 5132.3,
+     "center": [
+      49.595954,
+      26.010582
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      355150,
+      2874850,
+      364050,
+      2880880
+     ],
+     "bounds_wgs84": [
+      49.552233,
+      25.985233,
+      49.641794,
+      26.040529
+     ],
+     "width_m": 8900,
+     "height_m": 6030
+    },
+    {
+     "id": "route4_abqaiq_salasil_s04",
+     "index": 4,
+     "start_m": 15396.8,
+     "end_m": 20529.1,
+     "length_m": 5132.3,
+     "center": [
+      49.555207,
+      26.03701
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      351850,
+      2876670,
+      359360,
+      2884740
+     ],
+     "bounds_wgs84": [
+      49.51882,
+      26.001328,
+      49.594754,
+      26.074925
+     ],
+     "width_m": 7510,
+     "height_m": 8070
+    },
+    {
+     "id": "route4_abqaiq_salasil_s05",
+     "index": 5,
+     "start_m": 20529.1,
+     "end_m": 25661.4,
+     "length_m": 5132.3,
+     "center": [
+      49.525956,
+      26.074681
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      349200,
+      2880530,
+      356060,
+      2889120
+     ],
+     "bounds_wgs84": [
+      49.491826,
+      26.035898,
+      49.561365,
+      26.114138
+     ],
+     "width_m": 6860,
+     "height_m": 8590
+    },
+    {
+     "id": "route4_abqaiq_salasil_s06",
+     "index": 6,
+     "start_m": 25661.4,
+     "end_m": 30793.6,
+     "length_m": 5132.3,
+     "center": [
+      49.491314,
+      26.106175
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      344910,
+      2884910,
+      353410,
+      2891790
+     ],
+     "bounds_wgs84": [
+      49.448615,
+      26.07498,
+      49.534394,
+      26.137972
+     ],
+     "width_m": 8500,
+     "height_m": 6880
+    },
+    {
+     "id": "route4_abqaiq_salasil_s07",
+     "index": 7,
+     "start_m": 30793.6,
+     "end_m": 35925.9,
+     "length_m": 5132.3,
+     "center": [
+      49.451598,
+      26.134214
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      341250,
+      2887580,
+      349120,
+      2895340
+     ],
+     "bounds_wgs84": [
+      49.411581,
+      26.098682,
+      49.491205,
+      26.169573
+     ],
+     "width_m": 7870,
+     "height_m": 7760
+    },
+    {
+     "id": "route4_abqaiq_salasil_s08",
+     "index": 8,
+     "start_m": 35925.9,
+     "end_m": 41058.2,
+     "length_m": 5132.3,
+     "center": [
+      49.433599,
+      26.137393
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      340990,
+      2887240,
+      345880,
+      2895720
+     ],
+     "bounds_wgs84": [
+      49.408934,
+      26.095585,
+      49.458854,
+      26.172659
+     ],
+     "width_m": 4890,
+     "height_m": 8480
+    },
+    {
+     "id": "route4_abqaiq_salasil_s09",
+     "index": 9,
+     "start_m": 41058.2,
+     "end_m": 46190.5,
+     "length_m": 5132.3,
+     "center": [
+      49.43812,
+      26.092191
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      341260,
+      2882720,
+      346970,
+      2891450
+     ],
+     "bounds_wgs84": [
+      49.412157,
+      26.054816,
+      49.470281,
+      26.134233
+     ],
+     "width_m": 5710,
+     "height_m": 8730
+    }
+   ]
+  },
+  {
+   "id": "route5_al_ahsa_riyadh",
+   "number": 5,
+   "name": "Route 5: Al-Ahsa – Riyadh",
+   "from": "Al-Ahsa",
+   "to": "Riyadh",
+   "source_kmz": "data/satellite/routes/source/Al_Ahsa_Riyadh_Route5_2km_Study_Area.kmz",
+   "kml_document": "Al Ahsa - Riyadh | Route 5 | 2 km Study Area",
+   "sha256": "40721a213858f99ba7f020fbebc080e6ba76d71f6c8e556536782e36e7447030",
+   "geojson": "data/satellite/routes/route5_al_ahsa_riyadh.geojson",
+   "length_m": 327642.3,
+   "study_half_width_m": 2000,
+   "default_date": "2026-10-20",
+   "validation": {
+    "crs": "EPSG:4326 (KML lon/lat)",
+    "analysis_crs": [
+     "EPSG:32638",
+     "EPSG:32639"
+    ],
+    "centerline_points": 1383,
+    "study_area_points": 3332,
+    "centerline_inside_study_area": true,
+    "study_half_width_m": {
+     "min_m": 1998.4,
+     "median_m": 2002.0,
+     "max_m": 2003.9
+    },
+    "length_m": 327642.3,
+    "bbox_wgs84": [
+     46.70335,
+     24.63872,
+     49.56489,
+     25.39135
+    ]
+   },
+   "segments": [
+    {
+     "id": "route5_al_ahsa_riyadh_s01",
+     "index": 1,
+     "start_m": 0.0,
+     "end_m": 4964.3,
+     "length_m": 4964.3,
+     "center": [
+      49.557242,
+      25.377836
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      351110,
+      2803780,
+      357730,
+      2811170
+     ],
+     "bounds_wgs84": [
+      49.519677,
+      25.343257,
+      49.586257,
+      25.410619
+     ],
+     "width_m": 6620,
+     "height_m": 7390
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s02",
+     "index": 2,
+     "start_m": 4964.3,
+     "end_m": 9928.6,
+     "length_m": 4964.3,
+     "center": [
+      49.521252,
+      25.353267
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      346610,
+      2802710,
+      355320,
+      2807990
+     ],
+     "bounds_wgs84": [
+      49.47531,
+      25.333142,
+      49.562428,
+      25.381679
+     ],
+     "width_m": 8710,
+     "height_m": 5280
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s03",
+     "index": 3,
+     "start_m": 9928.6,
+     "end_m": 14892.8,
+     "length_m": 4964.3,
+     "center": [
+      49.472107,
+      25.353499
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      341700,
+      2802670,
+      350820,
+      2807480
+     ],
+     "bounds_wgs84": [
+      49.426578,
+      25.332268,
+      49.517731,
+      25.376631
+     ],
+     "width_m": 9120,
+     "height_m": 4810
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s04",
+     "index": 4,
+     "start_m": 14892.8,
+     "end_m": 19857.1,
+     "length_m": 4964.3,
+     "center": [
+      49.423697,
+      25.361666
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      336810,
+      2803270,
+      345910,
+      2808230
+     ],
+     "bounds_wgs84": [
+      49.377899,
+      25.337158,
+      49.468891,
+      25.382901
+     ],
+     "width_m": 9100,
+     "height_m": 4960
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s05",
+     "index": 5,
+     "start_m": 19857.1,
+     "end_m": 24821.4,
+     "length_m": 4964.3,
+     "center": [
+      49.374577,
+      25.365212
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      331920,
+      2804020,
+      341020,
+      2808960
+     ],
+     "bounds_wgs84": [
+      49.329218,
+      25.343385,
+      49.420228,
+      25.388977
+     ],
+     "width_m": 9100,
+     "height_m": 4940
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s06",
+     "index": 6,
+     "start_m": 24821.4,
+     "end_m": 29785.7,
+     "length_m": 4964.3,
+     "center": [
+      49.326426,
+      25.37347
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      327060,
+      2804750,
+      336130,
+      2809790
+     ],
+     "bounds_wgs84": [
+      49.280819,
+      25.349419,
+      49.371563,
+      25.395939
+     ],
+     "width_m": 9070,
+     "height_m": 5040
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s07",
+     "index": 7,
+     "start_m": 29785.7,
+     "end_m": 34749.9,
+     "length_m": 4964.3,
+     "center": [
+      49.277516,
+      25.378107
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      322130,
+      2805580,
+      331270,
+      2810040
+     ],
+     "bounds_wgs84": [
+      49.231795,
+      25.356331,
+      49.32318,
+      25.397653
+     ],
+     "width_m": 9140,
+     "height_m": 4460
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s08",
+     "index": 8,
+     "start_m": 34749.9,
+     "end_m": 39714.2,
+     "length_m": 4964.3,
+     "center": [
+      49.228742,
+      25.37914
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      317390,
+      2805710,
+      326340,
+      2811030
+     ],
+     "bounds_wgs84": [
+      49.18456,
+      25.356932,
+      49.274187,
+      25.406022
+     ],
+     "width_m": 8950,
+     "height_m": 5320
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s09",
+     "index": 9,
+     "start_m": 39714.2,
+     "end_m": 44678.5,
+     "length_m": 4964.3,
+     "center": [
+      49.187544,
+      25.377566
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      313710,
+      2804220,
+      321600,
+      2811170
+     ],
+     "bounds_wgs84": [
+      49.14797,
+      25.343028,
+      49.227295,
+      25.406725
+     ],
+     "width_m": 7890,
+     "height_m": 6950
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s10",
+     "index": 10,
+     "start_m": 44678.5,
+     "end_m": 49642.8,
+     "length_m": 4964.3,
+     "center": [
+      49.149474,
+      25.349407
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      309520,
+      2801580,
+      317920,
+      2808430
+     ],
+     "bounds_wgs84": [
+      49.106718,
+      25.318671,
+      49.191097,
+      25.381548
+     ],
+     "width_m": 8400,
+     "height_m": 6850
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s11",
+     "index": 11,
+     "start_m": 49642.8,
+     "end_m": 54607.0,
+     "length_m": 4964.3,
+     "center": [
+      49.10597,
+      25.328589
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      304940,
+      2799700,
+      313730,
+      2805790
+     ],
+     "bounds_wgs84": [
+      49.061596,
+      25.301112,
+      49.149746,
+      25.357201
+     ],
+     "width_m": 8790,
+     "height_m": 6090
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s12",
+     "index": 12,
+     "start_m": 54607.0,
+     "end_m": 59571.3,
+     "length_m": 4964.3,
+     "center": [
+      49.061353,
+      25.309744
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      300530,
+      2797410,
+      309150,
+      2803910
+     ],
+     "bounds_wgs84": [
+      49.018069,
+      25.279862,
+      49.104593,
+      25.339654
+     ],
+     "width_m": 8620,
+     "height_m": 6500
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s13",
+     "index": 13,
+     "start_m": 59571.3,
+     "end_m": 64535.6,
+     "length_m": 4964.3,
+     "center": [
+      49.015126,
+      25.297136
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      295580,
+      2797080,
+      304740,
+      2801620
+     ],
+     "bounds_wgs84": [
+      48.969255,
+      25.276216,
+      49.060862,
+      25.318415
+     ],
+     "width_m": 9160,
+     "height_m": 4540
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s14",
+     "index": 14,
+     "start_m": 64535.6,
+     "end_m": 69499.9,
+     "length_m": 4964.3,
+     "center": [
+      48.967979,
+      25.286683
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      290850,
+      2795940,
+      299790,
+      2801290
+     ],
+     "bounds_wgs84": [
+      48.922341,
+      25.265274,
+      49.011894,
+      25.314781
+     ],
+     "width_m": 8940,
+     "height_m": 5350
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s15",
+     "index": 15,
+     "start_m": 69499.9,
+     "end_m": 74464.1,
+     "length_m": 4964.3,
+     "center": [
+      48.919617,
+      25.281382
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      285960,
+      2795260,
+      295060,
+      2800290
+     ],
+     "bounds_wgs84": [
+      48.873949,
+      25.258446,
+      48.96505,
+      25.305115
+     ],
+     "width_m": 9100,
+     "height_m": 5030
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s16",
+     "index": 16,
+     "start_m": 74464.1,
+     "end_m": 79428.4,
+     "length_m": 4964.3,
+     "center": [
+      48.871734,
+      25.271922
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      281150,
+      2794160,
+      290170,
+      2799470
+     ],
+     "bounds_wgs84": [
+      48.82633,
+      25.247824,
+      48.91669,
+      25.297036
+     ],
+     "width_m": 9020,
+     "height_m": 5310
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s17",
+     "index": 17,
+     "start_m": 79428.4,
+     "end_m": 84392.7,
+     "length_m": 4964.3,
+     "center": [
+      48.823783,
+      25.262102
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      276310,
+      2793100,
+      285360,
+      2798370
+     ],
+     "bounds_wgs84": [
+      48.778467,
+      25.237544,
+      48.869126,
+      25.286426
+     ],
+     "width_m": 9050,
+     "height_m": 5270
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s18",
+     "index": 18,
+     "start_m": 84392.7,
+     "end_m": 89357.0,
+     "length_m": 4964.3,
+     "center": [
+      48.775451,
+      25.253773
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      271380,
+      2792500,
+      280520,
+      2797310
+     ],
+     "bounds_wgs84": [
+      48.729714,
+      25.231386,
+      48.8212,
+      25.276158
+     ],
+     "width_m": 9140,
+     "height_m": 4810
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s19",
+     "index": 19,
+     "start_m": 89357.0,
+     "end_m": 94321.3,
+     "length_m": 4964.3,
+     "center": [
+      48.726443,
+      25.250889
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      266420,
+      2792470,
+      275590,
+      2796850
+     ],
+     "bounds_wgs84": [
+      48.68057,
+      25.230351,
+      48.772293,
+      25.271276
+     ],
+     "width_m": 9170,
+     "height_m": 4380
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s20",
+     "index": 20,
+     "start_m": 94321.3,
+     "end_m": 99285.5,
+     "length_m": 4964.3,
+     "center": [
+      48.677278,
+      25.24914
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      261470,
+      2792300,
+      270630,
+      2796820
+     ],
+     "bounds_wgs84": [
+      48.631455,
+      25.228038,
+      48.723114,
+      25.270254
+     ],
+     "width_m": 9160,
+     "height_m": 4520
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s21",
+     "index": 21,
+     "start_m": 99285.5,
+     "end_m": 104249.8,
+     "length_m": 4964.3,
+     "center": [
+      48.629113,
+      25.241289
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      256710,
+      2790910,
+      265680,
+      2796510
+     ],
+     "bounds_wgs84": [
+      48.584278,
+      25.214732,
+      48.674248,
+      25.26669
+     ],
+     "width_m": 8970,
+     "height_m": 5600
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s22",
+     "index": 22,
+     "start_m": 104249.8,
+     "end_m": 109214.1,
+     "length_m": 4964.3,
+     "center": [
+      48.581814,
+      25.22901
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      251850,
+      2789900,
+      260920,
+      2795120
+     ],
+     "bounds_wgs84": [
+      48.536309,
+      25.204824,
+      48.627211,
+      25.253396
+     ],
+     "width_m": 9070,
+     "height_m": 5220
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s23",
+     "index": 23,
+     "start_m": 109214.1,
+     "end_m": 114178.4,
+     "length_m": 4964.3,
+     "center": [
+      48.534504,
+      25.217104
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      247210,
+      2788180,
+      256060,
+      2794110
+     ],
+     "bounds_wgs84": [
+      48.490464,
+      25.188532,
+      48.579317,
+      25.2435
+     ],
+     "width_m": 8850,
+     "height_m": 5930
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s24",
+     "index": 24,
+     "start_m": 114178.4,
+     "end_m": 119142.6,
+     "length_m": 4964.3,
+     "center": [
+      48.489111,
+      25.199871
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      242510,
+      2786610,
+      251420,
+      2792390
+     ],
+     "bounds_wgs84": [
+      48.444167,
+      25.17357,
+      48.533592,
+      25.227219
+     ],
+     "width_m": 8910,
+     "height_m": 5780
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s25",
+     "index": 25,
+     "start_m": 119142.6,
+     "end_m": 124106.9,
+     "length_m": 4964.3,
+     "center": [
+      48.442231,
+      25.186209
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      237660,
+      2785600,
+      246720,
+      2790820
+     ],
+     "bounds_wgs84": [
+      48.396366,
+      25.16362,
+      48.487181,
+      25.212268
+     ],
+     "width_m": 9060,
+     "height_m": 5220
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s26",
+     "index": 26,
+     "start_m": 124106.9,
+     "end_m": 129071.2,
+     "length_m": 4964.3,
+     "center": [
+      48.393517,
+      25.179779
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      232750,
+      2784940,
+      241870,
+      2789810
+     ],
+     "bounds_wgs84": [
+      48.347875,
+      25.156802,
+      48.439226,
+      25.20233
+     ],
+     "width_m": 9120,
+     "height_m": 4870
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s27",
+     "index": 27,
+     "start_m": 129071.2,
+     "end_m": 134035.5,
+     "length_m": 4964.3,
+     "center": [
+      48.3461,
+      25.168572
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      228050,
+      2783350,
+      236960,
+      2789150
+     ],
+     "bounds_wgs84": [
+      48.301405,
+      25.141617,
+      48.390861,
+      25.195524
+     ],
+     "width_m": 8910,
+     "height_m": 5800
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s28",
+     "index": 28,
+     "start_m": 134035.5,
+     "end_m": 138999.7,
+     "length_m": 4964.3,
+     "center": [
+      48.300178,
+      25.152555
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      223480,
+      2781400,
+      232260,
+      2787560
+     ],
+     "bounds_wgs84": [
+      48.256418,
+      25.123194,
+      48.344661,
+      25.18035
+     ],
+     "width_m": 8780,
+     "height_m": 6160
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s29",
+     "index": 29,
+     "start_m": 138999.7,
+     "end_m": 143964.0,
+     "length_m": 4964.3,
+     "center": [
+      48.256117,
+      25.132615
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      218930,
+      2779460,
+      227690,
+      2785610
+     ],
+     "bounds_wgs84": [
+      48.211716,
+      25.104854,
+      48.299761,
+      25.161939
+     ],
+     "width_m": 8760,
+     "height_m": 6150
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s30",
+     "index": 30,
+     "start_m": 143964.0,
+     "end_m": 148928.3,
+     "length_m": 4964.3,
+     "center": [
+      48.209764,
+      25.118024
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      214130,
+      2778190,
+      223140,
+      2783670
+     ],
+     "bounds_wgs84": [
+      48.16455,
+      25.092496,
+      48.25494,
+      25.143608
+     ],
+     "width_m": 9010,
+     "height_m": 5480
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s31",
+     "index": 31,
+     "start_m": 148928.3,
+     "end_m": 153892.6,
+     "length_m": 4964.3,
+     "center": [
+      48.162031,
+      25.107436
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      209260,
+      2777270,
+      218340,
+      2782400
+     ],
+     "bounds_wgs84": [
+      48.116563,
+      25.083268,
+      48.207581,
+      25.131263
+     ],
+     "width_m": 9080,
+     "height_m": 5130
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s32",
+     "index": 32,
+     "start_m": 153892.6,
+     "end_m": 158856.9,
+     "length_m": 4964.3,
+     "center": [
+      48.114437,
+      25.096367
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      204450,
+      2776060,
+      213470,
+      2781480
+     ],
+     "bounds_wgs84": [
+      48.069106,
+      25.071422,
+      48.159597,
+      25.122046
+     ],
+     "width_m": 9020,
+     "height_m": 5420
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s33",
+     "index": 33,
+     "start_m": 158856.9,
+     "end_m": 163821.1,
+     "length_m": 4964.3,
+     "center": [
+      48.066179,
+      25.088681
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      199540,
+      2775430,
+      208660,
+      2780270
+     ],
+     "bounds_wgs84": [
+      48.020732,
+      25.064771,
+      48.112096,
+      25.110211
+     ],
+     "width_m": 9120,
+     "height_m": 4840
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s34",
+     "index": 34,
+     "start_m": 163821.1,
+     "end_m": 168785.4,
+     "length_m": 4964.3,
+     "center": [
+      48.017614,
+      25.083232
+     ],
+     "epsg": 32639,
+     "bounds_utm": [
+      194580,
+      2775290,
+      203750,
+      2779640
+     ],
+     "bounds_wgs84": [
+      47.971744,
+      25.062515,
+      48.063506,
+      25.103573
+     ],
+     "width_m": 9170,
+     "height_m": 4350
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s35",
+     "index": 35,
+     "start_m": 168785.4,
+     "end_m": 173749.7,
+     "length_m": 4964.3,
+     "center": [
+      47.968676,
+      25.084673
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      794870,
+      2775270,
+      804020,
+      2779970
+     ],
+     "bounds_wgs84": [
+      47.922825,
+      25.062617,
+      48.014464,
+      25.106819
+     ],
+     "width_m": 9150,
+     "height_m": 4700
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s36",
+     "index": 36,
+     "start_m": 173749.7,
+     "end_m": 178714.0,
+     "length_m": 4964.3,
+     "center": [
+      47.919876,
+      25.090199
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      789940,
+      2775760,
+      799080,
+      2780480
+     ],
+     "bounds_wgs84": [
+      47.87411,
+      25.068021,
+      47.965645,
+      25.112375
+     ],
+     "width_m": 9140,
+     "height_m": 4720
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s37",
+     "index": 37,
+     "start_m": 178714.0,
+     "end_m": 183678.2,
+     "length_m": 4964.3,
+     "center": [
+      47.872255,
+      25.100151
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      785260,
+      2776270,
+      794150,
+      2782110
+     ],
+     "bounds_wgs84": [
+      47.827869,
+      25.073589,
+      47.917159,
+      25.12797
+     ],
+     "width_m": 8890,
+     "height_m": 5840
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s38",
+     "index": 38,
+     "start_m": 183678.2,
+     "end_m": 188642.5,
+     "length_m": 4964.3,
+     "center": [
+      47.825887,
+      25.113945
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      780390,
+      2777900,
+      789470,
+      2782670
+     ],
+     "bounds_wgs84": [
+      47.779969,
+      25.089195,
+      47.870911,
+      25.133935
+     ],
+     "width_m": 9080,
+     "height_m": 4770
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s39",
+     "index": 39,
+     "start_m": 188642.5,
+     "end_m": 193606.8,
+     "length_m": 4964.3,
+     "center": [
+      47.77679,
+      25.111535
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      775440,
+      2778050,
+      784600,
+      2782540
+     ],
+     "bounds_wgs84": [
+      47.730966,
+      25.091474,
+      47.822631,
+      25.133676
+     ],
+     "width_m": 9160,
+     "height_m": 4490
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s40",
+     "index": 40,
+     "start_m": 193606.8,
+     "end_m": 198571.1,
+     "length_m": 4964.3,
+     "center": [
+      47.727635,
+      25.111084
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      770480,
+      2777920,
+      779650,
+      2782280
+     ],
+     "bounds_wgs84": [
+      47.681805,
+      25.091226,
+      47.77353,
+      25.132229
+     ],
+     "width_m": 9170,
+     "height_m": 4360
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s41",
+     "index": 41,
+     "start_m": 198571.1,
+     "end_m": 203535.3,
+     "length_m": 4964.3,
+     "center": [
+      47.678674,
+      25.114674
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      765570,
+      2778000,
+      774690,
+      2782900
+     ],
+     "bounds_wgs84": [
+      47.633179,
+      25.092859,
+      47.724506,
+      25.138695
+     ],
+     "width_m": 9120,
+     "height_m": 4900
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s42",
+     "index": 42,
+     "start_m": 203535.3,
+     "end_m": 208499.6,
+     "length_m": 4964.3,
+     "center": [
+      47.630118,
+      25.121325
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      760650,
+      2778690,
+      769780,
+      2783440
+     ],
+     "bounds_wgs84": [
+      47.584566,
+      25.099969,
+      47.675955,
+      25.144427
+     ],
+     "width_m": 9130,
+     "height_m": 4750
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s43",
+     "index": 43,
+     "start_m": 208499.6,
+     "end_m": 213463.9,
+     "length_m": 4964.3,
+     "center": [
+      47.582394,
+      25.131529
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      756420,
+      2779230,
+      764860,
+      2785610
+     ],
+     "bounds_wgs84": [
+      47.542756,
+      25.105712,
+      47.627614,
+      25.164731
+     ],
+     "width_m": 8440,
+     "height_m": 6380
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s44",
+     "index": 44,
+     "start_m": 213463.9,
+     "end_m": 218428.2,
+     "length_m": 4964.3,
+     "center": [
+      47.546666,
+      25.139984
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      752460,
+      2779590,
+      760650,
+      2786040
+     ],
+     "bounds_wgs84": [
+      47.503583,
+      25.109693,
+      47.585963,
+      25.16928
+     ],
+     "width_m": 8190,
+     "height_m": 6450
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s45",
+     "index": 45,
+     "start_m": 218428.2,
+     "end_m": 223392.4,
+     "length_m": 4964.3,
+     "center": [
+      47.501999,
+      25.121561
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      747970,
+      2777530,
+      756670,
+      2783800
+     ],
+     "bounds_wgs84": [
+      47.458718,
+      25.09179,
+      47.546088,
+      25.149816
+     ],
+     "width_m": 8700,
+     "height_m": 6270
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s46",
+     "index": 46,
+     "start_m": 223392.4,
+     "end_m": 228356.7,
+     "length_m": 4964.3,
+     "center": [
+      47.455519,
+      25.111517
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      743240,
+      2776510,
+      752180,
+      2781740
+     ],
+     "bounds_wgs84": [
+      47.411671,
+      25.083344,
+      47.501204,
+      25.132001
+     ],
+     "width_m": 8940,
+     "height_m": 5230
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s47",
+     "index": 47,
+     "start_m": 228356.7,
+     "end_m": 233321.0,
+     "length_m": 4964.3,
+     "center": [
+      47.409729,
+      25.096033
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      738810,
+      2774340,
+      747450,
+      2780720
+     ],
+     "bounds_wgs84": [
+      47.367401,
+      25.064548,
+      47.45414,
+      25.123506
+     ],
+     "width_m": 8640,
+     "height_m": 6380
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s48",
+     "index": 48,
+     "start_m": 233321.0,
+     "end_m": 238285.3,
+     "length_m": 4964.3,
+     "center": [
+      47.366194,
+      25.075667
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      734300,
+      2772310,
+      743020,
+      2778550
+     ],
+     "bounds_wgs84": [
+      47.322376,
+      25.04695,
+      47.409852,
+      25.104633
+     ],
+     "width_m": 8720,
+     "height_m": 6240
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s49",
+     "index": 49,
+     "start_m": 238285.3,
+     "end_m": 243249.6,
+     "length_m": 4964.3,
+     "center": [
+      47.319446,
+      25.06278
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      729650,
+      2770730,
+      738510,
+      2776520
+     ],
+     "bounds_wgs84": [
+      47.276051,
+      25.033411,
+      47.364807,
+      25.08703
+     ],
+     "width_m": 8860,
+     "height_m": 5790
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s50",
+     "index": 50,
+     "start_m": 243249.6,
+     "end_m": 248213.8,
+     "length_m": 4964.3,
+     "center": [
+      47.274277,
+      25.045637
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      725140,
+      2768710,
+      733860,
+      2774940
+     ],
+     "bounds_wgs84": [
+      47.23105,
+      25.015909,
+      47.318464,
+      25.073451
+     ],
+     "width_m": 8720,
+     "height_m": 6230
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s51",
+     "index": 51,
+     "start_m": 248213.8,
+     "end_m": 253178.1,
+     "length_m": 4964.3,
+     "center": [
+      47.229543,
+      25.02744
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      720400,
+      2767440,
+      729350,
+      2772920
+     ],
+     "bounds_wgs84": [
+      47.183903,
+      25.005139,
+      47.273444,
+      25.055921
+     ],
+     "width_m": 8950,
+     "height_m": 5480
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s52",
+     "index": 52,
+     "start_m": 253178.1,
+     "end_m": 258142.4,
+     "length_m": 4964.3,
+     "center": [
+      47.181564,
+      25.019113
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      715880,
+      2765510,
+      724610,
+      2771650
+     ],
+     "bounds_wgs84": [
+      47.138838,
+      24.988432,
+      47.22628,
+      25.045112
+     ],
+     "width_m": 8730,
+     "height_m": 6140
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s53",
+     "index": 53,
+     "start_m": 258142.4,
+     "end_m": 263106.7,
+     "length_m": 4964.3,
+     "center": [
+      47.136797,
+      25.001218
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      711230,
+      2763840,
+      720090,
+      2769720
+     ],
+     "bounds_wgs84": [
+      47.092537,
+      24.974024,
+      47.181197,
+      25.02835
+     ],
+     "width_m": 8860,
+     "height_m": 5880
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s54",
+     "index": 54,
+     "start_m": 263106.7,
+     "end_m": 268070.9,
+     "length_m": 4964.3,
+     "center": [
+      47.089686,
+      24.989692
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      706710,
+      2762080,
+      715440,
+      2768050
+     ],
+     "bounds_wgs84": [
+      47.04752,
+      24.958807,
+      47.134878,
+      25.013902
+     ],
+     "width_m": 8730,
+     "height_m": 5970
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s55",
+     "index": 55,
+     "start_m": 268070.9,
+     "end_m": 273035.2,
+     "length_m": 4964.3,
+     "center": [
+      47.052784,
+      24.961679
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      703110,
+      2758780,
+      710920,
+      2766290
+     ],
+     "bounds_wgs84": [
+      47.011395,
+      24.929659,
+      47.089842,
+      24.998504
+     ],
+     "width_m": 7810,
+     "height_m": 7510
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s56",
+     "index": 56,
+     "start_m": 273035.2,
+     "end_m": 277999.5,
+     "length_m": 4964.3,
+     "center": [
+      47.008725,
+      24.944256
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      698240,
+      2758130,
+      707320,
+      2762990
+     ],
+     "bounds_wgs84": [
+      46.963097,
+      24.924288,
+      47.053696,
+      24.969364
+     ],
+     "width_m": 9080,
+     "height_m": 4860
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s57",
+     "index": 57,
+     "start_m": 277999.5,
+     "end_m": 282963.8,
+     "length_m": 4964.3,
+     "center": [
+      46.963396,
+      24.933041
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      694110,
+      2755540,
+      702450,
+      2762340
+     ],
+     "bounds_wgs84": [
+      46.921855,
+      24.901568,
+      47.005382,
+      24.964031
+     ],
+     "width_m": 8340,
+     "height_m": 6800
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s58",
+     "index": 58,
+     "start_m": 282963.8,
+     "end_m": 287928.0,
+     "length_m": 4964.3,
+     "center": [
+      46.922918,
+      24.90849
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      690160,
+      2752570,
+      698320,
+      2759750
+     ],
+     "bounds_wgs84": [
+      46.882357,
+      24.875304,
+      46.96412,
+      24.941153
+     ],
+     "width_m": 8160,
+     "height_m": 7180
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s59",
+     "index": 59,
+     "start_m": 287928.0,
+     "end_m": 292892.3,
+     "length_m": 4964.3,
+     "center": [
+      46.88244,
+      24.884201
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      687090,
+      2749090,
+      694370,
+      2756780
+     ],
+     "bounds_wgs84": [
+      46.851512,
+      24.844402,
+      46.924602,
+      24.914726
+     ],
+     "width_m": 7280,
+     "height_m": 7690
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s60",
+     "index": 60,
+     "start_m": 292892.3,
+     "end_m": 297856.6,
+     "length_m": 4964.3,
+     "center": [
+      46.857394,
+      24.846723
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      684580,
+      2744980,
+      691300,
+      2753300
+     ],
+     "bounds_wgs84": [
+      46.826138,
+      24.807692,
+      46.893737,
+      24.88362
+     ],
+     "width_m": 6720,
+     "height_m": 8320
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s61",
+     "index": 61,
+     "start_m": 297856.6,
+     "end_m": 302820.9,
+     "length_m": 4964.3,
+     "center": [
+      46.852212,
+      24.806393
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      684440,
+      2740450,
+      690100,
+      2749190
+     ],
+     "bounds_wgs84": [
+      46.824155,
+      24.766952,
+      46.881301,
+      24.846538
+     ],
+     "width_m": 5660,
+     "height_m": 8740
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s62",
+     "index": 62,
+     "start_m": 302820.9,
+     "end_m": 307785.1,
+     "length_m": 4964.3,
+     "center": [
+      46.843702,
+      24.767605
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      682410,
+      2736800,
+      689880,
+      2744660
+     ],
+     "bounds_wgs84": [
+      46.80361,
+      24.734032,
+      46.878508,
+      24.80589
+     ],
+     "width_m": 7470,
+     "height_m": 7860
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s63",
+     "index": 63,
+     "start_m": 307785.1,
+     "end_m": 312749.4,
+     "length_m": 4964.3,
+     "center": [
+      46.804387,
+      24.741071
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      678340,
+      2733950,
+      686620,
+      2741010
+     ],
+     "bounds_wgs84": [
+      46.76302,
+      24.708706,
+      46.845782,
+      24.773422
+     ],
+     "width_m": 8280,
+     "height_m": 7060
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s64",
+     "index": 64,
+     "start_m": 312749.4,
+     "end_m": 317713.7,
+     "length_m": 4964.3,
+     "center": [
+      46.763815,
+      24.715867
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      674280,
+      2731100,
+      682550,
+      2738160
+     ],
+     "bounds_wgs84": [
+      46.722544,
+      24.683469,
+      46.805171,
+      24.748161
+     ],
+     "width_m": 8270,
+     "height_m": 7060
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s65",
+     "index": 65,
+     "start_m": 317713.7,
+     "end_m": 322678.0,
+     "length_m": 4964.3,
+     "center": [
+      46.722074,
+      24.693344
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      670500,
+      2728340,
+      678490,
+      2735310
+     ],
+     "bounds_wgs84": [
+      46.684862,
+      24.65903,
+      46.764675,
+      24.722858
+     ],
+     "width_m": 7990,
+     "height_m": 6970
+    },
+    {
+     "id": "route5_al_ahsa_riyadh_s66",
+     "index": 66,
+     "start_m": 322678.0,
+     "end_m": 327642.3,
+     "length_m": 4964.3,
+     "center": [
+      46.710382,
+      24.658264
+     ],
+     "epsg": 32638,
+     "bounds_utm": [
+      670250,
+      2723920,
+      675970,
+      2732550
+     ],
+     "bounds_wgs84": [
+      46.681858,
+      24.61942,
+      46.739424,
+      24.69797
+     ],
+     "width_m": 5720,
+     "height_m": 8630
+    }
+   ]
+  }
+ ]
+}

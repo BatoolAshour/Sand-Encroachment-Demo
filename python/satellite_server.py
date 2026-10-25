@@ -13,8 +13,10 @@ opening index.html by double-click: it talks to CONFIG.SATELLITE_API_BASE.
 
 Endpoints:
     GET /api/satellite/status
-    GET /api/satellite/locations
-    GET /api/satellite/analysis?location=<id>&date=YYYY-MM-DD[&mode=live|cache][&provider=auto|cdse|aws]
+    GET /api/satellite/routes          research routes and their segments (alias: /locations)
+    GET /api/satellite/analysis?segment=<segment id>&date=YYYY-MM-DD
+                                       [&buffer_m=200][&mode=live|cache][&provider=auto|cdse|aws]
+        (location=<segment id> is accepted too)
     GET /api/satellite/analysis?lat=<deg>&lon=<deg>&date=YYYY-MM-DD           (custom point, live)
 Each analysis is saved in data/satellite/cache/ and added to
 data/satellite/cache_manifest.js, so it also works offline afterwards.
@@ -29,9 +31,10 @@ try:
 except ImportError:
     sys.exit("Missing packages. Run:  pip install -r python/requirements.txt")
 
-from satellite.analysis import REPO_ROOT, analyse, custom_location, find_location, load_locations
+from satellite.analysis import DEFAULT_BUFFER_M, REPO_ROOT, analyse, custom_location, find_segment, load_routes
 from satellite.cache import cached_results, find_cached, write_manifest
 from satellite.providers import CdseProvider, SatelliteError, get_provider
+from satellite.routes import RouteError
 
 app = Flask(__name__)
 
@@ -56,12 +59,14 @@ def status():
         "provider": get_provider("auto").name,
         "cdse_configured": CdseProvider.from_env() is not None,
         "cached_analyses": len(cached_results()),
+        "routes": len(load_routes()),
     })
 
 
+@app.get("/api/satellite/routes")
 @app.get("/api/satellite/locations")
-def locations():
-    return jsonify({"locations": load_locations()})
+def routes():
+    return jsonify({"routes": load_routes()})
 
 
 @app.get("/api/satellite/analysis")
@@ -70,6 +75,10 @@ def analysis():
     mode = request.args.get("mode", "live")
     provider = request.args.get("provider", "auto")
     lat, lon = request.args.get("lat"), request.args.get("lon")
+    try:
+        buffer_m = int(request.args.get("buffer_m", DEFAULT_BUFFER_M))
+    except ValueError:
+        return error(400, "buffer_m must be a whole number of metres.")
 
     if lat is not None and lon is not None:
         try:
@@ -77,9 +86,9 @@ def analysis():
         except ValueError:
             return error(400, "lat and lon must be numbers.")
     else:
-        location = find_location(request.args.get("location", ""))
+        location = find_segment(request.args.get("segment") or request.args.get("location", ""))
         if not location:
-            return error(404, "Unknown location.")
+            return error(404, "Unknown route segment.", "Pick a segment from /api/satellite/routes.")
     if mode not in ("live", "cache") or provider not in ("auto", "cdse", "aws"):
         return error(400, "mode must be live|cache and provider auto|cdse|aws.")
     if not date:
@@ -88,10 +97,10 @@ def analysis():
     if mode == "cache":
         cached = find_cached(location["id"], date or None)
         return jsonify(cached) if cached else error(404, "Not in the local cache.",
-                                                    "Run a live analysis once, or python satellite_cache.py.")
+                                                    "Run a live analysis once, or python satellite_cache.py --route N --segments ….")
     try:
-        result = analyse(location, date, provider=provider, allow_fetch_roads=True)
-    except SatelliteError as err:
+        result = analyse(location, date, provider=provider, allow_fetch_roads=True, buffer_m=buffer_m)
+    except (SatelliteError, RouteError) as err:
         return error(422, str(err))
     except requests.RequestException as err:
         return error(502, f"Satellite service not reachable ({err.__class__.__name__}).",

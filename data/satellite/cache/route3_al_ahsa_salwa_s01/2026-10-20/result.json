@@ -1,0 +1,144 @@
+{
+  "schema": "pro01-satellite-analysis/1.1",
+  "data_kind": "satellite-derived",
+  "disclaimer": "Derived from real Sentinel-2 satellite imagery. Not a measurement from the physical prototype (sand_01 / wind_01). Rule-based detection, not validated in the field.",
+  "location": {
+    "id": "route3_al_ahsa_salwa_s01",
+    "name": "Route 3: Al-Ahsa \u2013 Salwa \u00b7 segment 1 of 31",
+    "lat": 25.356775,
+    "lon": 49.591556,
+    "size_m": 7070,
+    "width_m": 7070,
+    "height_m": 6740,
+    "epsg": 32639,
+    "bounds_wgs84": [
+      49.560989,
+      25.327594,
+      49.631938,
+      25.389112
+    ]
+  },
+  "route": {
+    "id": "route3_al_ahsa_salwa",
+    "number": 3,
+    "name": "Route 3: Al-Ahsa \u2013 Salwa",
+    "from": "Al-Ahsa",
+    "to": "Salwa",
+    "length_m": 152722.7,
+    "source_kmz": "data/satellite/routes/source/Al_Ahsa_Salwa_Route3_2km_Study_Area.kmz",
+    "sha256": "a64f71c0f94ffb9e7d8cdd3a96364d485dfbd34f955588bcb76fca261416540f",
+    "geojson": "data/satellite/routes/route3_al_ahsa_salwa.geojson",
+    "study_half_width_m": 2000
+  },
+  "segment": {
+    "id": "route3_al_ahsa_salwa_s01",
+    "index": 1,
+    "start_m": 0.0,
+    "end_m": 4926.5,
+    "length_m": 4926.5,
+    "center": [
+      49.591556,
+      25.356775
+    ],
+    "epsg": 32639,
+    "bounds_utm": [
+      355240,
+      2802000,
+      362310,
+      2808740
+    ],
+    "bounds_wgs84": [
+      49.560989,
+      25.327594,
+      49.631938,
+      25.389112
+    ],
+    "width_m": 7070,
+    "height_m": 6740,
+    "count": 31
+  },
+  "analysis_area": {
+    "basis": "segment part of the 2 km study area (KMZ)",
+    "study_half_width_m": 2000,
+    "road_buffer_m": 200,
+    "image_km": [
+      7.07,
+      6.74
+    ]
+  },
+  "requested_date": "2026-10-20",
+  "scene": {
+    "id": "S2C_39RUJ_20261020_0_L2A",
+    "date": "2026-10-20",
+    "datetime": "2026-10-20T07:22:38.101000Z",
+    "tile_cloud_pct": 0.03,
+    "collection": "Sentinel-2 Level-2A (surface reflectance)",
+    "resolution_m": 10,
+    "provider": "AWS Open Data (Sentinel-2 L2A COGs, Element 84)",
+    "mosaic_tiles": [],
+    "attribution": "Contains modified Copernicus Sentinel data 2026"
+  },
+  "road": {
+    "available": true,
+    "method": "kmz",
+    "source": "Route centreline from Al_Ahsa_Salwa_Route3_2km_Study_Area.kmz (unchanged KMZ coordinates)",
+    "note": null
+  },
+  "measurements": {
+    "area_km2": 23.13,
+    "image_km2": 47.65,
+    "valid_pct": 100.0,
+    "cloud_pct": 0.0,
+    "area_sand_coverage_pct": 4.0,
+    "area_vegetation_pct": 13.1,
+    "area_other_bare_pct": 48.3,
+    "buffer_m": 200,
+    "sand_coverage_pct": 1.4,
+    "vegetation_coverage_pct": 7.0,
+    "bare_soil_pct": 50.1,
+    "distance_to_road_m": 60,
+    "strip_valid_pixels": 19376,
+    "sand_within_20m_of_centreline_px": 0
+  },
+  "processing": {
+    "version": "1.1",
+    "processed_at": "2026-10-25T17:57:37Z",
+    "steps": [
+      "analysis area: segment part of the KMZ 2 km study area (pixels nearer to this segment than to the rest of the route); road = KMZ centreline",
+      "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
+      "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
+      "thresholding: Bare Soil Index > 0, NDVI < 0.15, brightness above asphalt/shadow",
+      "texture analysis: local standard deviation (5 x 5 px) must be low",
+      "morphology: opening, closing, removal of patches and holes < 0.25 ha"
+    ],
+    "parameters": {
+      "sand_hue_deg": [
+        8.0,
+        48.0
+      ],
+      "saturation_bounds": [
+        0.45,
+        0.65
+      ],
+      "min_brightness": 0.15,
+      "min_bsi": 0.0,
+      "max_ndvi_sand": 0.15,
+      "vegetation_ndvi": 0.25,
+      "texture_window_px": 5,
+      "max_texture": 0.015,
+      "min_patch_px": 25,
+      "buffer_m": 200
+    },
+    "diagnostics": {
+      "saturation_threshold": 0.45,
+      "saturation_threshold_method": "Otsu",
+      "candidate_pixels": 19506,
+      "after_morphology_pixels": 18345,
+      "texture_rejected_pixels": 113586
+    }
+  },
+  "images": {
+    "original": "data/satellite/cache/route3_al_ahsa_salwa_s01/2026-10-20/original.jpg",
+    "overlay": "data/satellite/cache/route3_al_ahsa_salwa_s01/2026-10-20/overlay.jpg"
+  }
+}

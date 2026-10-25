@@ -30,6 +30,7 @@ try:
     import rasterio
     from rasterio.enums import Resampling
     from rasterio.io import MemoryFile
+    from rasterio.vrt import WarpedVRT
     from rasterio.warp import transform as warp_transform
     from rasterio.windows import from_bounds
 except ImportError as err:  # pragma: no cover
@@ -50,12 +51,20 @@ class SatelliteError(RuntimeError):
 
 @dataclass
 class Area:
-    """A square area of interest, snapped to the 10 m grid of its UTM zone."""
+    """A rectangular area of interest, snapped to the 10 m grid of its UTM zone."""
     lat: float
     lon: float
     size_m: int
     epsg: int
     bounds: tuple            # (minx, miny, maxx, maxy) in metres, EPSG:<epsg>
+
+    @property
+    def width_m(self):
+        return int(round(self.bounds[2] - self.bounds[0]))
+
+    @property
+    def height_m(self):
+        return int(round(self.bounds[3] - self.bounds[1]))
 
     @property
     def shape(self):
@@ -84,6 +93,16 @@ def make_area(lat, lon, size_m=5000, epsg=None):
     snap = lambda v: round(v / PIXEL_M) * PIXEL_M
     bounds = (snap(xs[0] - half), snap(ys[0] - half), snap(xs[0] + half), snap(ys[0] + half))
     return Area(lat=lat, lon=lon, size_m=size_m, epsg=epsg, bounds=bounds)
+
+
+def area_from_bounds(lat, lon, epsg, bounds):
+    """Area from UTM bounds (a route segment's image, see routes.build_segments)."""
+    minx, miny, maxx, maxy = bounds
+    if any(v % PIXEL_M for v in bounds) or maxx <= minx or maxy <= miny:
+        raise SatelliteError("Segment bounds are not on the 10 m grid; re-run python import_routes.py.")
+    if epsg != (32600 if lat >= 0 else 32700) + int((lon + 180) // 6) + 1:
+        raise SatelliteError("Segment UTM zone does not match its centre; re-run python import_routes.py.")
+    return Area(lat=lat, lon=lon, size_m=int(max(maxx - minx, maxy - miny)), epsg=epsg, bounds=tuple(bounds))
 
 
 @dataclass
@@ -214,11 +233,17 @@ class AwsCogProvider:
 
     def find_scene(self, area, date, max_days=15, max_cloud=30):
         day = _parse_date(date)
-        tile = _mgrs_tile(area.lat, area.lon)
         months = {(d.year, d.month) for d in (day - dt.timedelta(days=max_days), day, day + dt.timedelta(days=max_days))}
-        ids = []
-        for year, month in sorted(months):
-            ids += self._list(f"{self.PREFIX}/{int(tile[:2])}/{tile[2]}/{tile[3:]}/{year}/{month}/")
+        # The tile of the centre first. Near a UTM zone edge that MGRS square may not be a
+        # Sentinel-2 tile (e.g. 39RSH); then the tile of a corner is used, and read()
+        # fills the rest of the area from the neighbouring tiles.
+        ids, tile = [], None
+        for candidate in _area_tiles(area):
+            for year, month in sorted(months):
+                ids += self._list(f"{self.PREFIX}/{int(candidate[:2])}/{candidate[2]}/{candidate[3:]}/{year}/{month}/")
+            if ids:
+                tile = candidate
+                break
         scenes = []
         for item_id in ids:
             m = re.match(r"S2[ABC]_\w{5}_(\d{8})_\d+_L2A$", item_id)
@@ -261,8 +286,8 @@ class AwsCogProvider:
             raise SatelliteError(f"Scene metadata not found for {scene.scene_id}.")
         return r.json()
 
-    def read(self, scene, area):
-        item = scene.extra.get("item") or self._item(scene)
+    def _read_item(self, item, area):
+        """Bands of one tile, cut to the area (reprojected when the tile is in another UTM zone)."""
         rows, cols = area.shape
         out, scl = {}, None
         env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2")
@@ -271,13 +296,17 @@ class AwsCogProvider:
         with rasterio.Env(**env):
             for band, key in self.ASSETS.items():
                 asset = item["assets"][key]
+                resampling = Resampling.nearest if band == "SCL" else Resampling.bilinear
                 with rasterio.open("/vsicurl/" + asset["href"]) as ds:
-                    if ds.crs.to_epsg() != area.epsg:
-                        raise SatelliteError("Area crosses into another UTM zone; move the centre slightly.")
-                    win = from_bounds(*area.bounds, transform=ds.transform)
-                    resampling = Resampling.nearest if band == "SCL" else Resampling.bilinear
-                    a = ds.read(1, window=win, out_shape=(rows, cols), boundless=True, fill_value=0,
-                                resampling=resampling)
+                    if ds.crs.to_epsg() == area.epsg:
+                        win = from_bounds(*area.bounds, transform=ds.transform)
+                        a = ds.read(1, window=win, out_shape=(rows, cols), boundless=True, fill_value=0,
+                                    resampling=resampling)
+                    else:
+                        # Tile in the neighbouring UTM zone: warp it onto the area's 10 m grid.
+                        with WarpedVRT(ds, crs=f"EPSG:{area.epsg}", transform=area.transform, width=cols,
+                                       height=rows, resampling=resampling, nodata=0) as vrt:
+                            a = vrt.read(1)
                 if band == "SCL":
                     scl = a.astype("uint8")
                     continue
@@ -286,7 +315,36 @@ class AwsCogProvider:
                 refl = a.astype("float32") * scale + offset
                 refl[a == 0] = np.nan
                 out[band] = refl
+        return out, scl
+
+    def _same_pass_items(self, scene, area):
+        """Items of the same date on the neighbouring tiles that the area reaches into."""
+        d = _parse_date(scene.date)
+        items = []
+        for t in _area_tiles(area):
+            if t == scene.extra["tile"]:
+                continue
+            for item_id in self._list(f"{self.PREFIX}/{int(t[:2])}/{t[2]}/{t[3:]}/{d.year}/{d.month}/"):
+                if re.match(rf"S2[ABC]_{t}_{d:%Y%m%d}_\d+_L2A$", item_id):
+                    items.append(self._item(Scene(item_id, scene.date, "", None, self.name, {"tile": t})))
+        return items
+
+    def read(self, scene, area):
+        item = scene.extra.get("item") or self._item(scene)
+        out, scl = self._read_item(item, area)
         nodata = (scl == 0) | np.isnan(out["B04"])
+        if nodata.any():
+            # The area reaches beyond this tile: fill the gap from the same pass on the neighbours.
+            for other in self._same_pass_items(scene, area):
+                more, more_scl = self._read_item(other, area)
+                fill = nodata & (more_scl != 0) & ~np.isnan(more["B04"])
+                for b in out:
+                    out[b][fill] = more[b][fill]
+                scl[fill] = more_scl[fill]
+                nodata &= ~fill
+                scene.extra.setdefault("mosaic_tiles", []).append(other["id"])
+                if not nodata.any():
+                    break
         return BandData(bands=out, scl=scl, nodata=nodata, area=area)
 
 
@@ -296,6 +354,13 @@ def _mgrs_tile(lat, lon):
     except ImportError:
         raise SystemExit("Missing package 'mgrs'. Run:  pip install -r python/requirements.txt") from None
     return mgrs.MGRS().toMGRS(lat, lon, MGRSPrecision=0)
+
+
+def _area_tiles(area):
+    """MGRS tiles under the area: the centre's first, then the corners' and edges'."""
+    w, s, e, n = area.wgs84_bounds()
+    points = [(area.lat, area.lon)] + [(la, lo) for la in (s, area.lat, n) for lo in (w, area.lon, e)]
+    return list(dict.fromkeys(_mgrs_tile(la, lo) for la, lo in points))
 
 
 def _rank(scenes, day):
@@ -316,15 +381,16 @@ def get_provider(preference="auto"):
     return cdse or AwsCogProvider()
 
 
-def fetch_bands(provider, area, date, max_days=15, max_cloud=30, min_valid=0.9):
-    """Nearest usable scene to `date`: tries candidates until the area has enough clear pixels."""
+def fetch_bands(provider, area, date, max_days=15, max_cloud=30, min_valid=0.9, region=None):
+    """Nearest usable scene to `date`: tries candidates until the area (or `region`, a mask of
+    the pixels that will be measured) has enough pixels with data."""
     candidates = provider.find_scene(area, date, max_days=max_days, max_cloud=max_cloud)
     if not candidates:
         raise SatelliteError(f"No Sentinel-2 scene with ≤{max_cloud}% cloud within ±{max_days} days of {date}.")
     reasons = []
     for scene in candidates[:4]:
         data = provider.read(scene, area)
-        valid = 1.0 - float(np.mean(data.nodata))
+        valid = 1.0 - float(np.mean(data.nodata if region is None else data.nodata[region]))
         if valid >= min_valid:
             return scene, data
         reasons.append(f"{scene.scene_id}: only {valid:.0%} of the area has data")

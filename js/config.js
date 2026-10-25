@@ -53,6 +53,7 @@ const CONFIG = {
   SATELLITE_API_BASE: "http://localhost:8780",
   SATELLITE_DEFAULT_SOURCE: "cache",        // "cache" | "live"
   SATELLITE_REQUEST_TIMEOUT_MS: 180000,     // a live analysis downloads imagery
+  SATELLITE_ROAD_BUFFER_M: 200,            // live analysis: extra measurement strip beside the road (10–2000 m)
 
   // Drawing / gauge scale only: this sand_01 depth fills the road picture.
   SAND_DEPTH_DISPLAY_MAX_CM: 6,

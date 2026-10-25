@@ -5,8 +5,10 @@ satellite — real Sentinel-2 imagery for the Satellite Monitoring section.
                    (Copernicus Data Space Ecosystem, or the public AWS archive)
     processing.py  sand detection: colour segmentation, thresholding,
                    texture analysis and morphological clean-up
-    roads.py       road centreline (GeoJSON / OpenStreetMap) and its checks
-    analysis.py    runs one analysis and writes original.png, overlay.png and
+    routes.py      research routes from the KMZ files: exact centreline and
+                   2 km study area, validation, ~5 km analysis segments
+    roads.py       road distance and drawing; OpenStreetMap for custom points
+    analysis.py    runs one analysis and writes original.jpg, overlay.jpg and
                    result.json into the local cache
     cache.py       cache folder layout and the manifest the dashboard reads
 
