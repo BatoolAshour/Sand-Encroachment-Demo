@@ -33,6 +33,11 @@
  * }
  * Sand + vegetation + bare soil are shares of the same strip; the rest
  * (up to 100 %) is "other" (asphalt, buildings, shadow…).
+ *
+ * Real Sentinel-2 analyses (js/satellite.js) use the same schema with
+ * data_source "sentinel-2" and data_kind "satellite-derived". They may
+ * leave values null when they cannot be measured (no weather source; no
+ * road geometry -> no distance). Null is shown as "—", never guessed.
  * ===================================================================== */
 
 const SAMPLE_ENVIRONMENT_SCENARIOS = {
@@ -95,37 +100,47 @@ const SAMPLE_ENVIRONMENT_SCENARIOS = {
  * the record is unusable. Real providers should pass through this too.
  * --------------------------------------------------------------------- */
 function normalizeEnvironmentData(raw) {
-  if (!raw || !raw.satellite || !raw.weather) return null;
+  if (!raw || !raw.satellite) return null;
   const num = (v, min, max) => {
+    if (v === null || v === undefined || v === "") return null;
     const n = Number(v);
     return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
   };
   const s = raw.satellite;
-  const w = raw.weather;
+  const w = raw.weather || {};
   const clean = {
     timestamp: String(raw.timestamp || ""),
     data_source: String(raw.data_source || "unknown"),
+    data_kind: raw.data_kind === "satellite-derived" ? "satellite-derived" : "sample",
     scenario: raw.scenario || null,
     location: raw.location || "",
     satellite: {
       source: String(s.source || "unknown"),
+      scene_id: s.scene_id ? String(s.scene_id) : null,
       observation_date: String(s.observation_date || ""),
       buffer_m: num(s.buffer_m, 0, 10000),
+      coverage_basis: s.coverage_basis ? String(s.coverage_basis) : null,
       sand_coverage_pct: num(s.sand_coverage_pct, 0, 100),
       vegetation_coverage_pct: num(s.vegetation_coverage_pct, 0, 100),
       bare_soil_pct: num(s.bare_soil_pct, 0, 100),
       distance_to_road_m: num(s.distance_to_road_m, 0, 100000),
+      distance_note: s.distance_note ? String(s.distance_note) : null,
     },
     weather: {
       temperature_c: num(w.temperature_c, -20, 60),
       humidity_pct: num(w.humidity_pct, 0, 100),
       wind_speed_mps: num(w.wind_speed_mps, 0, 60),
     },
+    weather_note: raw.weather_note ? String(raw.weather_note) : null,
   };
-  // The four values used by the demo rule must be present.
-  const required = [clean.satellite.sand_coverage_pct, clean.satellite.vegetation_coverage_pct,
-    clean.satellite.distance_to_road_m, clean.weather.wind_speed_mps];
-  return required.some((v) => v === null) ? null : clean;
+  if (clean.satellite.sand_coverage_pct === null) return null;   // nothing to show
+  // Sample records must stay complete (all four demo-rule inputs present).
+  if (clean.data_kind === "sample") {
+    const required = [clean.satellite.vegetation_coverage_pct, clean.satellite.distance_to_road_m,
+      clean.weather.wind_speed_mps];
+    if (required.some((v) => v === null)) return null;
+  }
+  return clean;
 }
 
 

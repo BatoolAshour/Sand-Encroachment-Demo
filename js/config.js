@@ -37,6 +37,17 @@ const CONFIG = {
    * ------------------------------------------------------------------- */
   LIVE_BACKEND_URL: null,
 
+  /* -------------------------------------------------------------------
+   * [SATELLITE INTEGRATION POINT] Satellite Monitoring section.
+   * Real Sentinel-2 analyses, kept apart from the prototype's sensors.
+   *   - Cached (offline): data/satellite/cache_manifest.js, no server needed.
+   *   - Live: python/satellite_server.py at this address
+   *     (Copernicus Data Space Ecosystem, or the public AWS archive).
+   * ------------------------------------------------------------------- */
+  SATELLITE_API_BASE: "http://localhost:8780",
+  SATELLITE_DEFAULT_SOURCE: "cache",        // "cache" | "live"
+  SATELLITE_REQUEST_TIMEOUT_MS: 180000,     // a live analysis downloads imagery
+
   // Drawing / gauge scale only: this sand_01 depth fills the road picture.
   SAND_DEPTH_DISPLAY_MAX_CM: 6,
 

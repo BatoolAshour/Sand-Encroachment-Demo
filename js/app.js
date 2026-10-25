@@ -18,7 +18,9 @@ const state = {
   receivedAt: null,                 // when the last readings arrived
   scenarioMeta: null,               // { scenario_id, label, risk_level } of the last delivery
   readings: {},                     // latest contract reading per sensor_id
-  environment: null,                // field data sample (see environmentData.js)
+  environment: null,                // field data record (see environmentData.js)
+  envSource: "sample",              // "sample" (scenario) | "satellite" (real Sentinel-2 analysis)
+  satelliteEnv: null,               // last Sentinel-2 analysis as a field data record
   dataReady: false,                 // shared mock data loaded and valid
 };
 
@@ -93,16 +95,35 @@ function toLogEntries(data) {
 }
 
 
-// ---------- Field data sample (satellite + weather) ----------
+// ---------- Field data (sample scenario or real Sentinel-2 analysis) ----------
 // Single entry point for environment records from ANY provider
-// (sample today; satellite pipeline, weather data or Python backend later).
+// (sample scenarios, the Sentinel-2 pipeline, later weather data).
 function applyEnvironmentData(raw) {
   state.environment = raw ? normalizeEnvironmentData(raw) : null;
   refresh();
 }
 
+// Sample data follows the selected scenario. A Sentinel-2 analysis does not:
+// it describes a real road, independent of the Low/Medium/High experiment.
 function loadScenarioEnvironment() {
+  if (state.envSource === "satellite") {
+    applyEnvironmentData(state.satelliteEnv);
+    return;
+  }
   applyEnvironmentData(state.mode === "simulation" ? environmentProvider.load(state.scenario) : null);
+}
+
+function setEnvSource(source) {
+  if (source === "satellite" && !state.satelliteEnv) return;
+  state.envSource = source;
+  loadScenarioEnvironment();
+}
+
+// Called by the Satellite Monitoring section with each shown analysis.
+function handleSatelliteResult(record) {
+  state.satelliteEnv = record;
+  if (state.envSource === "satellite") loadScenarioEnvironment();
+  else updateControls();
 }
 
 function refresh() {
@@ -270,6 +291,10 @@ function updateControls() {
     b.setAttribute("aria-checked", String(b.dataset.scenario === state.scenario));
     b.disabled = state.mode !== "simulation" || !state.dataReady;
   });
+  document.querySelectorAll("#env-source-toggle button").forEach((b) => {
+    b.setAttribute("aria-checked", String(b.dataset.envSource === state.envSource));
+    if (b.dataset.envSource === "satellite") b.disabled = !state.satelliteEnv;
+  });
   const sc = SharedFileScenarioProvider.list().find((s) => s.scenario_id === state.scenario);
   $("sim-scenario-note").textContent = state.mode === "simulation"
     ? `Scenario / Demo: ${sc ? sc.label : "—"}`
@@ -289,6 +314,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     b.addEventListener("click", () => setMode(b.dataset.mode)));
   document.querySelectorAll("#scenario-toggle button").forEach((b) =>
     b.addEventListener("click", () => setScenario(b.dataset.scenario)));
+
+  document.querySelectorAll("#env-source-toggle button").forEach((b) =>
+    b.addEventListener("click", () => setEnvSource(b.dataset.envSource)));
+  $("btn-sat-use").addEventListener("click", () => {
+    setEnvSource("satellite");
+    $("env-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   $("btn-export").addEventListener("click", () => {
     if (!logger.downloadCSV()) setHint("Nothing to export yet.");
@@ -314,4 +346,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   sources.simulation.setScenario(state.scenario);
   loadScenarioEnvironment();
   renderLog(logger);
+
+  // Real Sentinel-2 section: shows the cached analyses at once (no network).
+  SatelliteMonitor.init({ onResult: handleSatelliteResult });
 });

@@ -87,6 +87,7 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
   grid-template-areas:
     "sim     sim     status"
     "control control control"
+    "sat     sat     sat"
     "env     env     env"
     "data    log     log";
   gap: var(--gap);
@@ -99,6 +100,7 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
 .controls     { grid-area: control; }
 .data-panel   { grid-area: data; }
 .env-panel    { grid-area: env; }
+.sat-panel    { grid-area: sat; }
 .log-panel    { grid-area: log; }
 
 .panel {
@@ -304,20 +306,73 @@ tr.empty td { color: var(--muted); text-align: center; padding: 22px; }
 .tag[data-level="Medium"] { background: rgba(227,163,42,0.18);  color: var(--medium); }
 .tag[data-level="High"]   { background: rgba(224,80,63,0.18);   color: var(--high); }
 
+/* ---------- Satellite monitoring (real Sentinel-2) ---------- */
+.real-badge {
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
+  color: #4fc3f7; border: 1px solid #4fc3f7;
+  background: rgba(79,195,247,0.10);
+  padding: 4px 10px; border-radius: 999px;
+}
+.sample-badge[data-kind="satellite"] { color: #4fc3f7; border-color: #4fc3f7; background: rgba(79,195,247,0.10); }
+.env-head-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.segmented-sm button { padding: 5px 10px; font-size: 0.8rem; }
+
+.sat-controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; }
+.sat-custom[hidden], .input[hidden] , .select[hidden] { display: none; }
+.select, .input {
+  font: inherit; font-size: 0.9rem; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; min-width: 0;
+}
+.select { max-width: 100%; min-width: 16em; }
+.input[type="number"] { width: 8.5em; }
+.input[type="date"] { color-scheme: dark; }
+.select:focus-visible, .input:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.sat-latlon { display: flex; gap: 6px; }
+.btn-sat { background: var(--accent); }
+
+.sat-status { margin: 12px 0; min-height: 1.3em; font-size: 0.88rem; color: var(--muted); }
+.sat-status[data-state="loading"] { color: var(--medium); }
+.sat-status[data-state="error"] { color: var(--high); }
+.sat-status[data-state="ok"] { color: var(--text); }
+
+.sat-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; }
+.sat-images { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sat-images figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sat-images img {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block;
+  background: var(--panel-2); border-radius: 8px; border: 1px solid var(--border);
+  image-rendering: auto;
+}
+.sat-images img:not([src]) { visibility: hidden; }
+.sat-images figcaption { font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.legend { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.lg-sand   { background: rgb(225,29,116); }
+.lg-road   { background: rgb(255,214,0); }
+.lg-buffer { border: 1.5px solid #fff; }
+.lg-excl   { background: rgb(100,116,139); }
+.sat-results { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sat-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sat-list dd { font-weight: 500; overflow-wrap: anywhere; }
+
 .footer { text-align: center; color: var(--muted); padding: 8px 28px 28px; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
+  .sat-body { grid-template-columns: 1fr; }
   .env-grid { grid-template-columns: 1fr 1fr; }
   .env-col:nth-child(3) { grid-column: 1 / -1; border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 16px; }
 }
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;
-    grid-template-areas: "sim" "status" "control" "env" "data" "log";
+    grid-template-areas: "sim" "status" "control" "sat" "env" "data" "log";
   }
 }
 @media (max-width: 700px) {
+  .sat-images { grid-template-columns: 1fr; }
+  .select { min-width: 0; width: 100%; }
   .env-grid { grid-template-columns: 1fr; }
   .env-col + .env-col { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 16px; }
   .bar-row, .contrib li { grid-template-columns: 8.5em 1fr 3.2em; }
