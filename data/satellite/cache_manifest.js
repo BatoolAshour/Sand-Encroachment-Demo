@@ -2,7 +2,7 @@
  * data/satellite/cache/<location>/<date>/result.json. Do not edit by hand.
  * Real Sentinel-2 analyses for offline use; see README section 10. */
 const SATELLITE_CACHE = {
- "generated_at": "2026-10-25T16:27:35Z",
+ "generated_at": "2026-10-25T17:13:55Z",
  "locations": [
   {
    "id": "dahna_highway",
@@ -179,7 +179,7 @@ const SATELLITE_CACHE = {
    },
    "processing": {
     "version": "1.0",
-    "processed_at": "2026-10-25T16:26:24Z",
+    "processed_at": "2026-10-25T16:55:18Z",
     "steps": [
      "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
      "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
@@ -543,7 +543,7 @@ const SATELLITE_CACHE = {
    },
    "processing": {
     "version": "1.0",
-    "processed_at": "2026-10-25T16:26:35Z",
+    "processed_at": "2026-10-25T17:13:55Z",
     "steps": [
      "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
      "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",

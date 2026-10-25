@@ -50,7 +50,7 @@
   },
   "processing": {
     "version": "1.0",
-    "processed_at": "2026-10-25T16:26:35Z",
+    "processed_at": "2026-10-25T17:13:55Z",
     "steps": [
       "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
       "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
