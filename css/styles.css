@@ -73,6 +73,7 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
 }
 .data-status strong { color: var(--text); }
 .data-status[data-state="error"] { color: var(--high); }
+.startup-problem[hidden] { display: none; }
 .data-status[data-state="error"] strong { color: var(--high); }
 .data-status ul { margin: 4px 0 0; padding-left: 20px; }
 .reading-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

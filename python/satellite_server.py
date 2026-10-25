@@ -37,9 +37,11 @@ app = Flask(__name__)
 
 
 @app.after_request
-def cors(resp):
+def headers(resp):
     # index.html may be opened from file:// (origin "null"); the API is local and read-only.
     resp.headers["Access-Control-Allow-Origin"] = "*"
+    # Always revalidate, so the browser never mixes old cached scripts with a new page.
+    resp.headers["Cache-Control"] = "no-cache"
     return resp
 
 

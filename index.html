@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sand Encroachment Monitoring System</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20261025-2">
 </head>
 <body>
 
@@ -20,6 +20,9 @@
       <span id="connection-text">Scenario / Demo: no hardware required</span>
     </div>
   </header>
+
+  <!-- Shown only if part of the page fails to start (script error, missing file) -->
+  <div class="data-status startup-problem" id="startup-problem" data-state="error" role="alert" hidden></div>
 
   <!-- Which shared data file is in use, or what is wrong with it -->
   <div class="data-status" id="data-status" data-state="loading">Loading shared mock data…</div>
@@ -367,18 +370,34 @@
   </footer>
 
   <!-- Plain scripts (no modules) so the page also works by double-clicking index.html.
-       Order matters: config → logic → data sources → logging → UI → app wiring. -->
-  <script src="js/config.js"></script>
-  <script src="js/risk.js"></script>
-  <script src="js/environmentData.js"></script>
-  <script src="js/environmentRule.js"></script>
-  <script src="js/sharedMockData.js"></script>
-  <script src="js/scenarioData.js"></script>
-  <script src="js/dataSources.js"></script>
-  <script src="js/logger.js"></script>
+       Order matters: config → logic → data sources → logging → UI → app wiring.
+       ?v=… is the release tag: change it whenever a script or the stylesheet
+       changes, so browsers never mix new HTML with old cached scripts. -->
+  <script>
+    // A script that fails to load or parse is reported on the page.
+    window.addEventListener("error", function (e) {
+      var src = e.target && e.target.src ? e.target.src.split("/").slice(-2).join("/") : (e.filename || "").split("/").pop();
+      var msg = e.message ? e.message : "could not be loaded";
+      document.addEventListener("DOMContentLoaded", show); if (document.readyState !== "loading") show();
+      function show() {
+        var box = document.getElementById("startup-problem");
+        if (!box) return;
+        box.hidden = false;
+        box.textContent = (box.textContent ? box.textContent + " " : "Start-up problem: ") + (src || "script") + ": " + msg + ".";
+      }
+    }, true);
+  </script>
+  <script src="js/config.js?v=20261025-2"></script>
+  <script src="js/risk.js?v=20261025-2"></script>
+  <script src="js/environmentData.js?v=20261025-2"></script>
+  <script src="js/environmentRule.js?v=20261025-2"></script>
+  <script src="js/sharedMockData.js?v=20261025-2"></script>
+  <script src="js/scenarioData.js?v=20261025-2"></script>
+  <script src="js/dataSources.js?v=20261025-2"></script>
+  <script src="js/logger.js?v=20261025-2"></script>
   <script src="data/satellite/cache_manifest.js"></script>
-  <script src="js/satellite.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/satellite.js?v=20261025-2"></script>
+  <script src="js/dashboard.js?v=20261025-2"></script>
+  <script src="js/app.js?v=20261025-2"></script>
 </body>
 </html>

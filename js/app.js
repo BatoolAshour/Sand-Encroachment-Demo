@@ -303,25 +303,31 @@ function updateControls() {
 
 
 // ---------- Wire up the page ----------
-document.addEventListener("DOMContentLoaded", async () => {
-  initDashboard();
+// Each part is wired on its own (startStep), so a failure in one optional
+// part (e.g. the satellite section, or a file the browser served from an old
+// cache) can never leave the core experiment controls without listeners.
+function startStep(name, fn) {
+  try {
+    fn();
+    return true;
+  } catch (err) {
+    console.error(`Dashboard start-up: ${name} failed`, err);
+    reportStartupProblem(`${name} could not start (${err.message}).`);
+    return false;
+  }
+}
 
+function wireExperimentControls() {
   $("btn-start").addEventListener("click", startExperiment);
   $("btn-stop").addEventListener("click", stopExperiment);
   $("btn-reset").addEventListener("click", resetExperiment);
-
   document.querySelectorAll("#mode-toggle button").forEach((b) =>
     b.addEventListener("click", () => setMode(b.dataset.mode)));
   document.querySelectorAll("#scenario-toggle button").forEach((b) =>
     b.addEventListener("click", () => setScenario(b.dataset.scenario)));
+}
 
-  document.querySelectorAll("#env-source-toggle button").forEach((b) =>
-    b.addEventListener("click", () => setEnvSource(b.dataset.envSource)));
-  $("btn-sat-use").addEventListener("click", () => {
-    setEnvSource("satellite");
-    $("env-title").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
+function wireLogControls() {
   $("btn-export").addEventListener("click", () => {
     if (!logger.downloadCSV()) setHint("Nothing to export yet.");
   });
@@ -329,6 +335,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     logger.clear();
     renderLog(logger);
   });
+}
+
+// Satellite Monitoring is optional: without it the rest of the page still works.
+function startSatelliteMonitoring() {
+  document.querySelectorAll("#env-source-toggle button").forEach((b) =>
+    b.addEventListener("click", () => setEnvSource(b.dataset.envSource)));
+  const use = $("btn-sat-use");
+  if (use) {
+    use.addEventListener("click", () => {
+      setEnvSource("satellite");
+      $("env-title").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  SatelliteMonitor.init({ onResult: handleSatelliteResult });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  startStep("Road drawing", initDashboard);
+  startStep("Experiment controls", wireExperimentControls);
+  startStep("Experiment log", wireLogControls);
 
   // Refresh the elapsed time every second while running (readings may be slower).
   setInterval(() => {
@@ -336,17 +362,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   }, 1000);
 
   // Load the shared mock data before anything can be played.
-  state.dataReady = await SharedFileScenarioProvider.load();
-  showDataStatus(SharedFileScenarioProvider);
-  if (state.dataReady) {
-    labelScenarioButtons(SharedFileScenarioProvider.list());
-    setHint(scenarioSummary(state.scenario));
+  try {
+    state.dataReady = await SharedFileScenarioProvider.load();
+  } catch (err) {
+    console.error("Shared mock data could not be loaded", err);
+    state.dataReady = false;
   }
+  startStep("Data status", () => {
+    showDataStatus(SharedFileScenarioProvider);
+    if (state.dataReady) {
+      labelScenarioButtons(SharedFileScenarioProvider.list());
+      setHint(scenarioSummary(state.scenario));
+    }
+  });
 
   sources.simulation.setScenario(state.scenario);
-  loadScenarioEnvironment();
-  renderLog(logger);
+  startStep("Field data", loadScenarioEnvironment);
+  startStep("Experiment log", () => renderLog(logger));
 
   // Real Sentinel-2 section: shows the cached analyses at once (no network).
-  SatelliteMonitor.init({ onResult: handleSatelliteResult });
+  startStep("Satellite monitoring", startSatelliteMonitoring);
+  startStep("Controls", refresh);   // buttons reflect the final state even if a step above failed
 });

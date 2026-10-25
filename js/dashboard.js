@@ -40,6 +40,16 @@ function initDashboard() {
   drawSandOnRoad(0);
 }
 
+// Start-up problems are shown on the page (not only in the console), so a
+// broken part is visible instead of the page silently not responding.
+function reportStartupProblem(text) {
+  const box = $("startup-problem");
+  if (!box) return;
+  box.hidden = false;
+  box.textContent = box.textContent ? `${box.textContent} ${text}` : `Start-up problem: ${text} ` +
+    "If you updated the files, reload with Cmd+Shift+R (Ctrl+F5) so the browser drops old cached copies.";
+}
+
 // After loading: show which shared file is used, or list its problems.
 function showDataStatus(provider) {
   const box = $("data-status");
@@ -180,18 +190,25 @@ const ENV_HEADINGS = {
   },
 };
 
+// Sets text only if the element exists (keeps rendering alive if the page
+// and the scripts ever come from different versions).
+function setText(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
 function renderEnvHeading(kind) {
   const h = ENV_HEADINGS[kind] || ENV_HEADINGS.sample;
-  $("env-title-text").textContent = h.title;
-  $("env-title-note").textContent = h.note;
-  $("env-badge").textContent = h.badge;
-  $("env-badge").dataset.kind = kind === "satellite-derived" ? "satellite" : "sample";
+  setText("env-title-text", h.title);
+  setText("env-title-note", h.note);
+  setText("env-badge", h.badge);
+  if ($("env-badge")) $("env-badge").dataset.kind = kind === "satellite-derived" ? "satellite" : "sample";
 }
 
 function renderEnvironment(env, indicator) {
   $("env-empty").hidden = !!env;
   $("env-grid").classList.toggle("is-empty", !env);
-  const set = (id, text) => { $(id).textContent = text; };
+  const set = setText;
   const show = (v) => (v === null || v === undefined ? "—" : v);
   const pct = (v) => (v === null || v === undefined ? "—" : `${v}%`);
   const bar = (id, v) => { $(id).style.width = env && v !== null ? `${v}%` : "0"; };

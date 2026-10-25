@@ -25,6 +25,10 @@ Then open <http://localhost:8000>.
 so the page uses `js/sharedMockData.js`, an exact generated copy of the same file. The banner
 under the title always says which one was loaded.
 
+If the buttons do not respond after updating the files, reload with **Cmd+Shift+R**
+(Ctrl+F5 on Windows) so the browser drops old cached copies. Any part that fails to start is
+named in a red line under the title instead of failing silently.
+
 No internet or backend is needed either way: the Satellite Monitoring section shows the
 **cached** real Sentinel-2 analyses in `data/satellite/` offline.
 
@@ -356,6 +360,11 @@ Satellite integration, tested on 25 Oct 2026 (Chromium + Python 3):
 - Regression: the scenario, field-data and live-bridge browser tests from 23 Oct were re-run on
   this branch and on `main`; results are identical (CSV contents, risk labels, values, scores).
 - Phone width (390 px): no horizontal scrolling.
+- Start-up robustness: every control clicked with real mouse events (Start, Stop, Reset,
+  Low / Medium / High, both sensor modes, CSV export, Clear log, all satellite controls) by
+  double-click, `http.server` and `satellite_server.py`, with the backend online and offline;
+  also with `satellite.js` missing and with an outdated cached `index.html`: the experiment
+  controls keep working and the problem is shown on the page.
 
 Copernicus Data Space (CDSE) itself could not be reached from the test machine; its code path
 is covered by the mocked test only. Check it once with your own credentials (section 10).

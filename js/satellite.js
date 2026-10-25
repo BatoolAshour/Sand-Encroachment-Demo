@@ -103,6 +103,9 @@ const SatelliteMonitor = {
   busy: false,
 
   init({ onResult }) {
+    const missing = ["sat-location", "sat-date-cached", "sat-date-live", "sat-source-toggle", "btn-sat-analyse",
+      "sat-status", "sat-custom", "sat-img-original", "sat-img-overlay"].filter((id) => !$(id));
+    if (missing.length) throw new Error(`satellite section is missing #${missing.join(", #")}`);
     this.onResult = onResult;
     const sel = $("sat-location");
     sel.innerHTML = "";
