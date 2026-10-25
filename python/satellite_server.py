@@ -27,7 +27,7 @@ try:
     import requests
     from flask import Flask, jsonify, request, send_from_directory
 except ImportError:
-    sys.exit("Missing packages. Run:  pip install -r requirements.txt")
+    sys.exit("Missing packages. Run:  pip install -r python/requirements.txt")
 
 from satellite.analysis import REPO_ROOT, analyse, custom_location, find_location, load_locations
 from satellite.cache import cached_results, find_cached, write_manifest
