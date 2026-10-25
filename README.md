@@ -2,10 +2,13 @@
 
 A browser dashboard for the physical prototype (a road inside a box with sand, a wind fan
 and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
-ready to show real sensor readings later.
+ready to show real sensor readings later. A separate **Satellite Monitoring** section analyses
+real Sentinel-2 images of Saudi highways for sand cover (section 10).
 
-> **Scenario / Demo only.** All values are fixed and illustrative, not real sensor readings.
-> Risk levels are preset display labels, not outputs of a trained model or validated thresholds.
+> **Scenario / Demo values are illustrative**, not real sensor readings. Risk levels are preset
+> display labels, not outputs of a trained model or validated thresholds.
+> **Satellite Monitoring is real data** from the Sentinel-2 satellites. It describes real roads,
+> not the prototype box, and is never shown as a `sand_01` / `wind_01` reading.
 
 ---
 
@@ -22,7 +25,15 @@ Then open <http://localhost:8000>.
 so the page uses `js/sharedMockData.js`, an exact generated copy of the same file. The banner
 under the title always says which one was loaded.
 
-No internet or backend is needed either way.
+No internet or backend is needed either way: the Satellite Monitoring section shows the
+**cached** real Sentinel-2 analyses in `data/satellite/` offline.
+
+**Live satellite analysis (optional, needs internet):**
+```bash
+pip install -r python/requirements.txt
+python3 python/satellite_server.py       # then open http://localhost:8780
+```
+See section 10 for Copernicus credentials and the offline cache.
 
 ---
 
@@ -37,21 +48,31 @@ No internet or backend is needed either way.
 │   ├── scenarioData.js        Loads + validates the shared file; future PRO-06 API provider
 │   ├── dataSources.js         ScenarioSource (Scenario / Demo) and LiveSensorSource
 │   ├── risk.js                Risk label helpers, road condition, live thresholds
-│   ├── environmentData.js     Field data SAMPLE (satellite + weather)
+│   ├── environmentData.js     Field data SAMPLE (satellite + weather) + record checks
 │   ├── environmentRule.js     Demo multi-variable indicator + explanation
+│   ├── satellite.js           Satellite Monitoring section (cached + live Sentinel-2)
 │   ├── logger.js              Experiment log + CSV export
 │   ├── dashboard.js           Drawing: updateDashboard(sensorData) and helpers
 │   └── app.js                 State + button logic; connects everything
 ├── python/
 │   ├── sync_shared_data.py    Regenerates / checks js/sharedMockData.js
 │   ├── bridge.py              Reference Arduino → WebSocket template (PRO-06 owns the backend)
+│   ├── satellite_server.py    Flask API for live Sentinel-2 analysis (port 8780)
+│   ├── satellite_cache.py     Command line: pre-cache analyses for offline demos
+│   ├── satellite/             providers (CDSE, AWS), processing, roads, analysis, cache
+│   ├── tests/                 Offline unit tests for the satellite pipeline
 │   └── requirements.txt
 └── data/
     ├── shared_mock_data.json          CANONICAL shared mock data v1.0 (unchanged)
     ├── SHARED_MOCK_DATA_README.txt    Rules that came with it
     ├── sample_reading.json            Example of the dashboard's data object
     ├── sample_environment_scenarios.json  Field data sample (copy of the JS)
-    └── sample_backend_message.json    Example live message (contract format)
+    ├── sample_backend_message.json    Example live message (contract format)
+    └── satellite/
+        ├── locations.json             Demo road segments (id, name, centre, size, default date)
+        ├── roads/<id>.geojson         Road centrelines used for distance + road strip
+        ├── cache/<id>/<date>/         original.png, overlay.png, result.json (real analyses)
+        └── cache_manifest.js          GENERATED list of cached analyses (works offline)
 ```
 
 ### How the files work together
@@ -63,7 +84,14 @@ No internet or backend is needed either way.
                                   │
                                   ├─► logger.js     one CSV row per reading
                                   └─► dashboard.js  updateDashboard(sensorData)
+
+ Sentinel-2 ─► python/satellite (server or cache) ─► cache_manifest.js / API
+                                  │
+                                  └─► satellite.js ─► Satellite Monitoring section
+                                           └─► applyEnvironmentData() ─► Field data panel
+                                               (only when "Sentinel-2 analysis" is selected)
 ```
+The satellite path never touches the sensor readings, the risk pills or the experiment log.
 
 ---
 
@@ -133,11 +161,24 @@ set e.g. `{ lowMax: 1.0, mediumMax: 3.0 }` (example numbers only).
 
 ---
 
-## 5. Field data sample (satellite + weather)
+## 5. Field data panel (sample scenario or Sentinel-2 analysis)
+
+The panel has a source switch:
+
+| Source | What it shows | Badge |
+|---|---|---|
+| **Sample scenario** (default) | The hand-written sample below, following Low / Medium / High | "Sample data · not real…" (amber) |
+| **Sentinel-2 analysis** | The analysis currently shown in Satellite Monitoring (section 10). It stays put when the scenario changes. | "Real Sentinel-2 data · satellite-derived, not from the prototype" (blue) |
+
+The second option unlocks once an analysis is shown (cached analyses load at start), or with
+**Use in Field data panel**. With Sentinel-2 the weather cards show "—": the satellite does not
+measure weather, no weather service is connected, and the prototype's `wind_01` is not used.
+
+### Sample data
 
 > **SAMPLE DATA — NOT REAL SENSOR OR SATELLITE MEASUREMENTS.**
 > The values are hand-written examples for an arid road corridor in Saudi Arabia.
-> No Sentinel-2 imagery has been downloaded or analysed and no weather service is called.
+> No satellite imagery is behind these numbers and no weather service is called.
 > The values are fixed, so each scenario shows the same numbers every time.
 
 Each scenario loads one record from `js/environmentData.js`:
@@ -220,6 +261,11 @@ Each factor is scaled to 0–1 in a straight line:
 The score is classified with `RISK_BANDS` (0–30 Low, 31–60 Medium, 61–100 High).
 The dashboard shows each factor's points and a one-line reason.
 
+**Missing inputs are never guessed.** A Sentinel-2 analysis has no wind speed (and no
+distance when no road geometry is available). The score then uses only the available
+factors, divided by their total weight, and is labelled **partial** (e.g. "High (partial)"),
+listing what was missing. Without sand coverage the indicator is not computed.
+
 **Important:**
 - This rule only shows how several variables *could* feed a risk assessment. It is not
   validated and it is **not** the future AI prediction model, which will be trained on real data.
@@ -235,19 +281,17 @@ All environment data goes through one function in `app.js`:
 applyEnvironmentData(record)   // validates with normalizeEnvironmentData(), then redraws
 ```
 
-Today `SampleEnvironmentProvider.load(scenarioKey)` supplies the record. To use real data,
-keep the same schema and either write a new provider with a `load()` method (set
-`environmentProvider` in `app.js`) or call `applyEnvironmentData()` when data arrives:
-- **Satellite:** land-cover shares and sand-front distance computed per road segment
-  (e.g. Sentinel-2 / Dynamic World in Google Earth Engine, exported by Python).
+`SampleEnvironmentProvider.load(scenarioKey)` supplies the sample record. Sentinel-2 analyses
+are converted to the same schema by `satelliteResultToEnvironment()` in `js/satellite.js`
+(`data_source: "sentinel-2"`, `data_kind: "satellite-derived"`, unknown values `null`).
+Still open:
 - **Weather:** observations or historical data (e.g. ERA5-Land) for the same date and place.
 - **Python backend:** send the record as a JSON message over the existing WebSocket.
 
-Search the code for **`[FUTURE DATA INTEGRATION POINT]`**. The dashboard reads only the
-schema, never the provider. In Live Sensor Mode no environment source is connected, so the
-panel says so and shows no values.
-
----
+Search the code for **`[FUTURE DATA INTEGRATION POINT]`** and **`[SATELLITE INTEGRATION POINT]`**.
+The dashboard reads only the schema, never the provider. In Live Sensor Mode the sample is not
+shown (no field source for real sensors); a Sentinel-2 analysis can still be selected because it
+describes a real road, not the box.
 
 ---
 
@@ -297,6 +341,25 @@ Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRAT
 
 ## 8. What was tested
 
+Satellite integration, tested on 25 Oct 2026 (Chromium + Python 3):
+- `python -m unittest discover -s tests` (in `python/`): 8 offline tests. Synthetic scenes check
+  sand vs gravel vs vegetation, clouds excluded (not counted as sand), speckle removed, road
+  distance (sand 300 m from a road → 300 m) and road-strip coverage, road outside the area
+  rejected; the Copernicus provider with the network mocked (request format, nearest scene,
+  GeoTIFF parsing); every cached result and road file is complete and valid.
+- Real imagery: 6 Sentinel-2 L2A scenes downloaded from the public AWS archive and analysed
+  (3 highway segments); overlays checked by eye against the true-colour images.
+- Live path: `satellite_server.py` downloaded and analysed a new scene (2026-10-05) from the
+  browser; a custom point without road geometry gave sand cover with distance "—" and the reason.
+- Offline: opened by double-click with no backend: cached analyses, date switching and the Field
+  data link work; Live shows "backend not reachable" instead of values.
+- Regression: the scenario, field-data and live-bridge browser tests from 23 Oct were re-run on
+  this branch and on `main`; results are identical (CSV contents, risk labels, values, scores).
+- Phone width (390 px): no horizontal scrolling.
+
+Copernicus Data Space (CDSE) itself could not be reached from the test machine; its code path
+is covered by the mocked test only. Check it once with your own credentials (section 10).
+
 Tested in Chromium on 23 Oct 2026:
 - Shared file loaded from `data/shared_mock_data.json` via a local server, and from the embedded
   copy when opened by double-click; banner shows the origin; `--check` confirms the copy matches.
@@ -322,3 +385,125 @@ Tested in Chromium on 23 Oct 2026:
   from `wind_01` on purpose. The demo rule's weights are not calibrated.
 - The browser log is cleared when the page is refreshed.
 - No AI map or prediction model is included (out of scope for PRO-01).
+- Satellite sand detection is rule-based and not validated against field data; see
+  "Limitations" in section 10.
+
+---
+
+## 10. Satellite monitoring (real Sentinel-2)
+
+### What it does
+1. Pick a **location** (road segment, 5 × 5 km) and an **observation date**.
+2. The backend finds the nearest **clear** Sentinel-2 Level-2A scene (≤ 30 % tile cloud,
+   within ± 15 days), cuts out the area at 10 m and reads bands B02, B03, B04, B08, B11, B12
+   and the Scene Classification Layer (SCL).
+3. Sand is detected (method below) and measured.
+4. The dashboard shows the **original** true-colour image beside the **sand-detection overlay**
+   (sand pink, road yellow, analysis strip white, cloud / water / no-data grey) and the numbers.
+5. **Use in Field data panel** sends the result to the Environmental panel (section 5).
+
+| Source switch | Needs | Notes |
+|---|---|---|
+| **Cached (offline)** (default) | nothing | Reads `data/satellite/cache_manifest.js`; works by double-click |
+| **Live (Python backend)** | `satellite_server.py` + internet | Any date; also custom lat/lon; result is added to the cache |
+
+### Included cached analyses (real imagery)
+
+| Location | Scene dates | Sand in 200 m road strip | Sand, whole area | Nearest sand to centreline |
+|---|---|---|---|---|
+| Divided highway across the Ad-Dahna sand belt (25.14° N, 48.27° E) | 2026-10-23, 2026-04-18 | 77.6 %, 81.1 % | 96.7 %, 97.5 % | 0 m |
+| Highway north-west of Salwa (24.89° N, 50.67° E) | 2026-10-20, 2026-01-18 | 47.9 %, 52.6 % | 54.4 %, 55.4 % | 10 m |
+| Highway south of the Salwa interchange (24.80° N, 50.72° E) | 2026-10-20, 2026-10-05 | 64.6 %, 69.6 % | 59.4 %, 55.3 % | 0 m |
+
+Values come from `result.json` in each cache folder (rule-based estimates, see below).
+
+### Setup
+```bash
+pip install -r python/requirements.txt     # numpy, scipy, rasterio, Pillow, requests, flask, mgrs
+python3 python/satellite_server.py         # http://localhost:8780 (dashboard + API)
+```
+The page also works from `index.html` by double-click; it calls `CONFIG.SATELLITE_API_BASE`
+(`http://localhost:8780`) only when **Live** is used.
+
+### Credentials and configuration
+
+| What | Needed? | How |
+|---|---|---|
+| **Copernicus Data Space Ecosystem** OAuth client | Recommended (preferred provider) | 1. Create a free account at <https://dataspace.copernicus.eu>. 2. Open the Sentinel Hub dashboard <https://shapps.dataspace.copernicus.eu/dashboard/> → **User settings** → **OAuth clients** → **Create**. 3. Copy the client ID and secret (the secret is shown once). 4. Set them before starting the server: `export CDSE_CLIENT_ID=…` and `export CDSE_CLIENT_SECRET=…` (Windows: `set CDSE_CLIENT_ID=…`). Free accounts have a monthly processing quota. |
+| No credentials | Works | Falls back to the public **AWS Open Data** Sentinel-2 L2A archive (Element 84 COGs), no account. |
+| Road geometry | Optional | Shipped: hand-traced centrelines for the 3 locations. Better: `python3 python/satellite_cache.py --refresh-roads` (OpenStreetMap via Overpass, needs internet), or put your own `data/satellite/roads/<id>.geojson` (LineString, WGS84). Live custom points try OpenStreetMap automatically. |
+| Proxy / company network | Only if HTTPS fails | Set `REQUESTS_CA_BUNDLE` (and `CURL_CA_BUNDLE` for GDAL) to your CA file. |
+| `js/config.js` | Optional | `SATELLITE_API_BASE`, `SATELLITE_DEFAULT_SOURCE` (`"cache"`/`"live"`), `SATELLITE_REQUEST_TIMEOUT_MS`. |
+
+The server shows which provider it uses at start-up and in `GET /api/satellite/status`.
+Force one with `?provider=cdse|aws` or `satellite_cache.py --provider cdse`.
+
+### Offline cache
+```bash
+python3 python/satellite_cache.py                        # every location at its default date
+python3 python/satellite_cache.py --location dahna_highway --date 2026-07-15
+python3 python/satellite_cache.py --lat 24.90 --lon 50.65 --date 2026-10-20
+python3 python/satellite_cache.py --list                 # what is cached
+python3 python/satellite_cache.py --manifest-only        # rebuild cache_manifest.js
+```
+Each run writes `data/satellite/cache/<location>/<scene date>/` and regenerates
+`cache_manifest.js`. Run it before a demo (or analyse live once); the images then show without
+internet. New locations: add an entry to `data/satellite/locations.json`.
+
+### API (`satellite_server.py`)
+| Request | Returns |
+|---|---|
+| `GET /api/satellite/status` | provider, whether CDSE is configured, number of cached analyses |
+| `GET /api/satellite/locations` | `locations.json` |
+| `GET /api/satellite/analysis?location=<id>&date=YYYY-MM-DD` | runs a live analysis (saved to cache) |
+| `…&mode=cache` | the cached result for that scene date, or 404 |
+| `GET /api/satellite/analysis?lat=..&lon=..&date=..` | custom point (road from OpenStreetMap if reachable) |
+
+Errors come back as `{"error", "hint"}` (422 no usable scene, 502 network, 404 unknown).
+
+### Sand detection method (`python/satellite/processing.py`)
+1. **Valid pixels:** SCL removes no-data, saturated, cloud (medium / high), cirrus, cloud shadow
+   and water. All percentages are shares of valid pixels, so clouds never count as sand or as
+   "no sand".
+2. **Colour segmentation:** true colour → HSV. Sand must have hue 8–48° (yellow-orange-red,
+   iron-coated dune sand) and saturation above a threshold.
+3. **Thresholding:** the saturation threshold is found per image with **Otsu's method** and kept
+   within 0.45–0.65. Also Bare Soil Index > 0, NDVI < 0.15 and mean visible reflectance ≥ 0.15
+   (removes asphalt, shadow and dark sabkha). Vegetation = NDVI ≥ 0.25.
+4. **Texture analysis:** local standard deviation of red reflectance in a 5 × 5 px (50 m)
+   window ≤ 0.015. Loose sand is smooth; rock outcrops, buildings and earthworks are rough.
+   Sand pixels next to smooth sand keep their label (the window straddles the edge there).
+5. **Morphology:** opening, closing, then removal of patches and holes smaller than 25 px
+   (0.25 ha).
+
+All parameters are listed at the top of `processing.py` and saved in every `result.json`.
+
+### Measurements (`result.json` → `measurements`)
+| Field | Meaning |
+|---|---|
+| `sand_coverage_pct` | Sand share of valid pixels within `buffer_m` (200 m) of the road centreline |
+| `vegetation_coverage_pct`, `bare_soil_pct` | Same strip; bare soil = other bare ground (gravel, rock, sabkha, paved) |
+| `distance_to_road_m` | Distance from the road **centreline** to the nearest detected sand pixel, in 10 m steps. `0` = sand in the centreline pixel; on a divided highway this includes a sandy median. |
+| `area_*_pct` | The same shares for the whole 5 × 5 km area |
+| `valid_pct`, `cloud_pct` | Share of the area that was usable / cloudy |
+
+Without valid road geometry (none available, or it does not cross the area) the strip values and
+distance are `null` with `distance_to_road_m_reason`; the Field data panel then uses the
+whole-area shares and says so.
+
+### Honesty rules built in
+- Every number comes from Sentinel-2 pixels; nothing is filled in or simulated. Unknown = `null` → "—".
+- Satellite results are labelled "Real Sentinel-2 … not measured by the physical prototype",
+  carry the scene ID and date, and never appear as `sand_01` / `wind_01`, in the risk pills or
+  in the experiment log. The Low / Medium / High simulation and Live Sensor Mode are unchanged.
+- Contains modified Copernicus Sentinel data (attribution saved in each result).
+
+### Limitations
+- Rule-based detection, not validated against field surveys. Pale sand, sabkha and caprock with
+  sand-like colour can be confused; mixed 10 m pixels blur edges. Treat values as estimates.
+- The shipped road centrelines were traced by hand on the images (± 10–20 m) and cover the main
+  carriageway only. Replace them with OpenStreetMap (`--refresh-roads`) when online.
+- Distance is measured to the centreline, not the paved edge (road width is not known).
+- 10 m pixels cannot see a thin sand film on asphalt; the result describes sand around the road.
+- The scene is the nearest clear one to the chosen date (the date used is always shown).
+- No weather data is attached to satellite results.
