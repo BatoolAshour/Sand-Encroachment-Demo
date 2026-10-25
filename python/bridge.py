@@ -26,10 +26,13 @@ What it does when the hardware exists:
 It never makes up readings: without a serial port it refuses to start.
 
 Setup:
-    pip install -r requirements.txt
+    pip install -r python/requirements.txt
+    python bridge.py --list-ports             (find the Arduino's port)
     python bridge.py --port COM3              (Windows)
     python bridge.py --port /dev/ttyUSB0      (Linux / macOS: /dev/cu.usbserial-…)
-Then in js/config.js set:  LIVE_BACKEND_URL: "ws://localhost:8765"
+    python bridge.py --port COM3 --baud 115200 --ws-port 8765
+js/config.js already points to ws://localhost:8765 (LIVE_BACKEND_URL).
+In the dashboard: Live Sensor -> Start.
 """
 
 import argparse
@@ -44,7 +47,7 @@ try:
     import serial          # pyserial
     import websockets
 except ImportError:
-    sys.exit("Missing packages. Run:  pip install -r requirements.txt")
+    sys.exit("Missing packages. Run:  pip install -r python/requirements.txt")
 
 
 # TODO (PRO-06 / hardware team): confirm baud rate and the sensor calibration
@@ -112,7 +115,13 @@ async def read_serial_forever(ser, log_writer, log_file):
     loop = asyncio.get_running_loop()
     while True:
         # readline() blocks, so run it in a worker thread.
-        raw = await loop.run_in_executor(None, ser.readline)
+        try:
+            raw = await loop.run_in_executor(None, ser.readline)
+        except serial.SerialException as err:
+            # Cable pulled / board reset: stop cleanly. The dashboard then shows
+            # "not connected" instead of old values pretending to be live.
+            print(f"Serial connection lost: {err}")
+            return
         parsed = parse_line(raw.decode(errors="ignore"))
         if parsed is None:
             continue
@@ -130,9 +139,9 @@ async def read_serial_forever(ser, log_writer, log_file):
         await broadcast(reading)
 
 
-async def main(port: str):
-    ser = serial.Serial(port, BAUD_RATE, timeout=1)
-    print(f"Serial port {port} opened at {BAUD_RATE} baud")
+async def main(port: str, baud: int, ws_port: int):
+    ser = serial.Serial(port, baud, timeout=1)
+    print(f"Serial port {port} opened at {baud} baud")
 
     Path("logs").mkdir(exist_ok=True)
     log_path = Path("logs") / f"experiment_{datetime.now():%Y%m%d_%H%M%S}.csv"
@@ -141,17 +150,30 @@ async def main(port: str):
         writer.writerow(CONTRACT_FIELDS)
         print(f"Logging to {log_path}")
 
-        async with websockets.serve(lambda ws: handle_client(ws, ser), WS_HOST, WS_PORT):
-            print(f"WebSocket ready at ws://{WS_HOST}:{WS_PORT}")
+        async with websockets.serve(lambda ws: handle_client(ws, ser), WS_HOST, ws_port):
+            print(f"WebSocket ready at ws://{WS_HOST}:{ws_port}  (dashboard: Live Sensor -> Start)")
             await read_serial_forever(ser, writer, log_file)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Arduino -> dashboard bridge")
-    parser.add_argument("--port", required=True, help="Arduino serial port, e.g. COM3 or /dev/ttyUSB0")
+    parser.add_argument("--port", help="Arduino serial port, e.g. COM3 or /dev/ttyUSB0")
+    parser.add_argument("--baud", type=int, default=BAUD_RATE, help=f"must match Serial.begin() in the sketch (default {BAUD_RATE})")
+    parser.add_argument("--ws-port", type=int, default=WS_PORT, help=f"WebSocket port (default {WS_PORT}, see LIVE_BACKEND_URL)")
+    parser.add_argument("--list-ports", action="store_true", help="list serial ports and exit")
     args = parser.parse_args()
+    if args.list_ports:
+        from serial.tools import list_ports
+        ports = list(list_ports.comports())
+        for p in ports:
+            print(f"{p.device:<28} {p.description}")
+        if not ports:
+            print("No serial ports found. Is the Arduino plugged in?")
+        sys.exit(0)
+    if not args.port:
+        parser.error("--port is required (use --list-ports to find it)")
     try:
-        asyncio.run(main(args.port))
+        asyncio.run(main(args.port, args.baud, args.ws_port))
     except serial.SerialException as err:
         sys.exit(f"Could not open serial port: {err}")
     except KeyboardInterrupt:

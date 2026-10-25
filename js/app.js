@@ -73,7 +73,9 @@ function buildSensorData() {
     road_condition: condition ? condition.label : null,
     elapsed_s: elapsedSeconds(),
     environment: state.environment,                                  // field data sample, or null
-    environmental_indicator: assessEnvironmentalIndicator(state.environment), // demo rule only
+    // Demo rule for the SAMPLE field data only; no score is made from real satellite data.
+    environmental_indicator: state.environment && state.environment.data_kind === "sample"
+      ? assessEnvironmentalIndicator(state.environment) : null,
   };
 }
 
@@ -160,6 +162,13 @@ function handleConnection(connState, message) {
   }
   if (state.mode !== "live") return;
 
+  if (connState === "stale") {
+    // Still connected, but the Arduino has gone quiet: keep the last values, warn clearly.
+    setConnectionIndicator("connecting", "Live: connected, no readings");
+    setHint(message);
+    return;
+  }
+
   setConnectionIndicator(connState, `Live: ${{
     not_configured: "not configured",
     connecting: "connecting…",
@@ -169,6 +178,7 @@ function handleConnection(connState, message) {
 
   if (connState === "connected") {
     showLiveNotice(Object.keys(state.readings).length === 0, "Backend connected", message);
+    setHint("");
   } else if (connState === "connecting") {
     showLiveNotice(true, "Connecting…", message);
   } else {
@@ -249,7 +259,7 @@ function showLiveNoticeForIdleLive() {
   if (sources.live.isConfigured()) {
     setConnectionIndicator("disconnected", "Live: not connected");
     showLiveNotice(true, "Hardware not connected",
-      `Backend address set to ${CONFIG.LIVE_BACKEND_URL}. Press Start to connect to the Python backend.`);
+      `Waiting for the Arduino. Run python/bridge.py (address ${CONFIG.LIVE_BACKEND_URL}), then press Start. No readings are shown until real data arrives.`);
   } else {
     setConnectionIndicator("not_configured", "Live: not configured");
     showLiveNotice(true, "Hardware not connected",

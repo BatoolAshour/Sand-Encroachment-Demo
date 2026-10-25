@@ -32,10 +32,16 @@ const CONFIG = {
   /* -------------------------------------------------------------------
    * [PYTHON / ARDUINO INTEGRATION POINT]
    * WebSocket address for Live Sensor Mode (see python/bridge.py).
-   * While null, Live mode shows "not configured" and never invents readings.
-   * Example when ready:  "ws://localhost:8765"
+   * Default: the address python/bridge.py listens on. Live mode shows
+   * "Hardware not connected" until the bridge runs, and never invents readings.
+   * Set to null to switch Live Sensor Mode off completely.
    * ------------------------------------------------------------------- */
-  LIVE_BACKEND_URL: null,
+  LIVE_BACKEND_URL: "ws://localhost:8765",   // python/bridge.py default; null = Live mode off
+
+  // Live connection behaviour (never invents readings):
+  LIVE_RECONNECT_ATTEMPTS: 3,        // after a lost connection, while running
+  LIVE_RECONNECT_DELAY_MS: 2000,
+  LIVE_STALE_AFTER_MS: 10000,        // warn when connected but no reading for this long
 
   /* -------------------------------------------------------------------
    * [SATELLITE INTEGRATION POINT] Satellite Monitoring section.

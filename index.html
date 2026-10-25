@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sand Encroachment Monitoring System</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261025-2">
+  <link rel="stylesheet" href="css/styles.css?v=20261025-3">
 </head>
 <body>
 
@@ -32,8 +32,12 @@
     <!-- ============ ROAD SIMULATION (central visual) ============ -->
     <section class="panel sim-panel" aria-labelledby="sim-title">
       <div class="panel-head">
-        <h2 id="sim-title">Road simulation</h2>
-        <span class="muted small" id="sim-scenario-note">Scenario / Demo</span>
+        <h2 id="sim-title">Road simulation <span class="h2-note">Arduino road prototype</span></h2>
+        <div class="sim-head-right">
+          <span class="muted small" id="sim-scenario-note">Scenario / Demo</span>
+          <!-- Where the sensor readings come from: simulated / live Arduino / none -->
+          <span class="source-tag" id="reading-source" data-kind="simulated">Simulated readings</span>
+        </div>
       </div>
 
       <div class="road-wrap">
@@ -99,7 +103,7 @@
         <div class="live-notice" id="live-notice" hidden>
           <strong id="live-notice-title">Hardware not connected</strong>
           <p id="live-notice-text">Python/Arduino integration is not configured yet, so no sensor readings are shown.</p>
-          <p class="small">To connect later: run <code>python/bridge.py</code> and set <code>LIVE_BACKEND_URL</code> in <code>js/config.js</code>. See README.</p>
+          <p class="small">To connect: plug in the Arduino, run <code>python3 python/bridge.py --port &lt;port&gt;</code>, then press Start. See README section 7.</p>
         </div>
       </div>
     </section>
@@ -143,7 +147,7 @@
         <p class="muted small" id="road-condition-detail">Press Start to play the selected scenario.</p>
       </div>
 
-      <p class="disclaimer small">Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds.</p>
+      <p class="disclaimer small" id="status-disclaimer">Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds.</p>
     </section>
 
     <!-- ============ CONTROLS ============ -->
@@ -181,86 +185,6 @@
       </div>
 
       <p class="hint" id="hint" aria-live="polite"></p>
-    </section>
-
-    <!-- ============ SATELLITE MONITORING (real Sentinel-2) ============ -->
-    <!-- Separate from the prototype: these are satellite observations of real
-         roads, never sand_01 / wind_01 readings. Logic in js/satellite.js. -->
-    <section class="panel sat-panel" aria-labelledby="sat-title">
-      <div class="panel-head">
-        <h2 id="sat-title">Satellite monitoring <span class="h2-note">Sentinel-2 L2A · 10 m pixels · Saudi highways</span></h2>
-        <span class="real-badge">Real Sentinel-2 imagery · not measured by the physical prototype</span>
-      </div>
-
-      <div class="sat-controls">
-        <div class="control-group">
-          <span class="control-label">Image source</span>
-          <div class="segmented" id="sat-source-toggle" role="radiogroup" aria-label="Satellite image source">
-            <button type="button" role="radio" data-source="cache" aria-checked="true">Cached (offline)</button>
-            <button type="button" role="radio" data-source="live" aria-checked="false">Live (Python backend)</button>
-          </div>
-        </div>
-        <label class="control-group">
-          <span class="control-label">Location</span>
-          <select id="sat-location" class="select"></select>
-        </label>
-        <div class="control-group sat-custom" id="sat-custom" hidden>
-          <span class="control-label">Custom point (lat, lon)</span>
-          <span class="sat-latlon">
-            <input type="number" id="sat-lat" class="input" step="0.0001" min="16" max="33" placeholder="24.8860" aria-label="Latitude">
-            <input type="number" id="sat-lon" class="input" step="0.0001" min="34" max="56" placeholder="50.6662" aria-label="Longitude">
-          </span>
-        </div>
-        <label class="control-group">
-          <span class="control-label">Observation date</span>
-          <select id="sat-date-cached" class="select"></select>
-          <input type="date" id="sat-date-live" class="input" hidden>
-        </label>
-        <div class="control-group">
-          <span class="control-label">&nbsp;</span>
-          <button type="button" class="btn btn-sat" id="btn-sat-analyse">Analyse</button>
-        </div>
-      </div>
-      <p class="sat-status" id="sat-status" data-state="idle" aria-live="polite">—</p>
-
-      <div class="sat-body">
-        <div class="sat-images">
-          <figure>
-            <img id="sat-img-original" alt="Sentinel-2 true-colour image of the selected road segment">
-            <figcaption>Original · true colour (B4, B3, B2)</figcaption>
-          </figure>
-          <figure>
-            <img id="sat-img-overlay" alt="The same image with detected sand highlighted">
-            <figcaption>
-              Sand detection
-              <span class="legend"><i class="lg-sand"></i>sand</span>
-              <span class="legend"><i class="lg-road"></i>road</span>
-              <span class="legend"><i class="lg-buffer"></i>analysis strip</span>
-              <span class="legend"><i class="lg-excl"></i>cloud / water / no data</span>
-            </figcaption>
-          </figure>
-        </div>
-
-        <div class="sat-results">
-          <div class="metrics sat-metrics">
-            <div class="metric metric-key"><span class="metric-label">Sand in road strip</span><span class="metric-value"><span id="s-strip">—</span><small>%</small></span></div>
-            <div class="metric"><span class="metric-label">Nearest sand to road</span><span class="metric-value"><span id="s-dist">—</span><small>m</small></span></div>
-            <div class="metric"><span class="metric-label">Sand, whole area</span><span class="metric-value"><span id="s-area">—</span><small>%</small></span></div>
-          </div>
-          <dl class="data-list sat-list">
-            <dt>Scene</dt>          <dd id="s-scene">—</dd>
-            <dt>Area</dt>           <dd id="s-extent">—</dd>
-            <dt>Clear pixels</dt>   <dd id="s-valid">—</dd>
-            <dt>Road geometry</dt>  <dd id="s-road">—</dd>
-            <dt>Provider</dt>       <dd id="s-provider">—</dd>
-            <dt>Processed</dt>      <dd id="s-processed">—</dd>
-          </dl>
-          <div class="buttons">
-            <button type="button" class="btn btn-ghost" id="btn-sat-use" disabled>Use in Field data panel</button>
-          </div>
-          <p class="disclaimer small">Rule-based detection (colour segmentation, thresholds, texture, morphology) on real Sentinel-2 pixels, not validated in the field. Distance is measured from the road centreline to the nearest detected sand pixel. Contains modified Copernicus Sentinel data.</p>
-        </div>
-      </div>
     </section>
 
     <!-- ============ ENVIRONMENTAL & SATELLITE DATA (sample or Sentinel-2) ============ -->
@@ -363,6 +287,86 @@
         </table>
       </div>
     </section>
+    <!-- ============ SATELLITE MONITORING (optional supporting view) ============ -->
+    <!-- Separate from the prototype: these are satellite observations of real
+         roads, never sand_01 / wind_01 readings, and they never change the road
+         simulation or its risk level. Logic in js/satellite.js. -->
+    <section class="panel sat-panel" aria-labelledby="sat-title">
+      <div class="panel-head">
+        <h2 id="sat-title">Satellite monitoring <span class="h2-note">optional supporting view · real Sentinel-2 images of Saudi highways · separate from the road simulation</span></h2>
+        <span class="real-badge">Real Sentinel-2 imagery · not measured by the physical prototype</span>
+      </div>
+
+      <div class="sat-controls">
+        <div class="control-group">
+          <span class="control-label">Image source</span>
+          <div class="segmented" id="sat-source-toggle" role="radiogroup" aria-label="Satellite image source">
+            <button type="button" role="radio" data-source="cache" aria-checked="true">Cached (offline)</button>
+            <button type="button" role="radio" data-source="live" aria-checked="false">Live (Python backend)</button>
+          </div>
+        </div>
+        <label class="control-group">
+          <span class="control-label">Location</span>
+          <select id="sat-location" class="select"></select>
+        </label>
+        <div class="control-group sat-custom" id="sat-custom" hidden>
+          <span class="control-label">Custom point (lat, lon)</span>
+          <span class="sat-latlon">
+            <input type="number" id="sat-lat" class="input" step="0.0001" min="16" max="33" placeholder="24.8860" aria-label="Latitude">
+            <input type="number" id="sat-lon" class="input" step="0.0001" min="34" max="56" placeholder="50.6662" aria-label="Longitude">
+          </span>
+        </div>
+        <label class="control-group">
+          <span class="control-label">Observation date</span>
+          <select id="sat-date-cached" class="select"></select>
+          <input type="date" id="sat-date-live" class="input" hidden>
+        </label>
+        <div class="control-group">
+          <span class="control-label">&nbsp;</span>
+          <button type="button" class="btn btn-sat" id="btn-sat-analyse">Analyse</button>
+        </div>
+      </div>
+      <p class="sat-status" id="sat-status" data-state="idle" aria-live="polite">—</p>
+
+      <div class="sat-body">
+        <div class="sat-images">
+          <figure>
+            <img id="sat-img-original" alt="Sentinel-2 true-colour image of the selected road segment">
+            <figcaption>Original · true colour (B4, B3, B2)</figcaption>
+          </figure>
+          <figure>
+            <img id="sat-img-overlay" alt="The same image with detected sand highlighted">
+            <figcaption>
+              Sand detection
+              <span class="legend"><i class="lg-sand"></i>sand</span>
+              <span class="legend"><i class="lg-road"></i>road</span>
+              <span class="legend"><i class="lg-buffer"></i>analysis strip</span>
+              <span class="legend"><i class="lg-excl"></i>cloud / water / no data</span>
+            </figcaption>
+          </figure>
+        </div>
+
+        <div class="sat-results">
+          <div class="metrics sat-metrics">
+            <div class="metric metric-key"><span class="metric-label">Sand in road strip</span><span class="metric-value"><span id="s-strip">—</span><small>%</small></span></div>
+            <div class="metric"><span class="metric-label">Nearest sand to road</span><span class="metric-value"><span id="s-dist">—</span><small>m</small></span></div>
+            <div class="metric"><span class="metric-label">Sand, whole area</span><span class="metric-value"><span id="s-area">—</span><small>%</small></span></div>
+          </div>
+          <dl class="data-list sat-list">
+            <dt>Scene</dt>          <dd id="s-scene">—</dd>
+            <dt>Area</dt>           <dd id="s-extent">—</dd>
+            <dt>Clear pixels</dt>   <dd id="s-valid">—</dd>
+            <dt>Road geometry</dt>  <dd id="s-road">—</dd>
+            <dt>Provider</dt>       <dd id="s-provider">—</dd>
+            <dt>Processed</dt>      <dd id="s-processed">—</dd>
+          </dl>
+          <div class="buttons">
+            <button type="button" class="btn btn-ghost" id="btn-sat-use" disabled>Use in Field data panel</button>
+          </div>
+          <p class="disclaimer small">Rule-based detection (colour segmentation, thresholds, texture, morphology) on real Sentinel-2 pixels, not validated in the field. Distance is measured from the road centreline to the nearest detected sand pixel. Contains modified Copernicus Sentinel data.</p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer small">
@@ -387,17 +391,17 @@
       }
     }, true);
   </script>
-  <script src="js/config.js?v=20261025-2"></script>
-  <script src="js/risk.js?v=20261025-2"></script>
-  <script src="js/environmentData.js?v=20261025-2"></script>
-  <script src="js/environmentRule.js?v=20261025-2"></script>
-  <script src="js/sharedMockData.js?v=20261025-2"></script>
-  <script src="js/scenarioData.js?v=20261025-2"></script>
-  <script src="js/dataSources.js?v=20261025-2"></script>
-  <script src="js/logger.js?v=20261025-2"></script>
+  <script src="js/config.js?v=20261025-3"></script>
+  <script src="js/risk.js?v=20261025-3"></script>
+  <script src="js/environmentData.js?v=20261025-3"></script>
+  <script src="js/environmentRule.js?v=20261025-3"></script>
+  <script src="js/sharedMockData.js?v=20261025-3"></script>
+  <script src="js/scenarioData.js?v=20261025-3"></script>
+  <script src="js/dataSources.js?v=20261025-3"></script>
+  <script src="js/logger.js?v=20261025-3"></script>
   <script src="data/satellite/cache_manifest.js"></script>
-  <script src="js/satellite.js?v=20261025-2"></script>
-  <script src="js/dashboard.js?v=20261025-2"></script>
-  <script src="js/app.js?v=20261025-2"></script>
+  <script src="js/satellite.js?v=20261025-3"></script>
+  <script src="js/dashboard.js?v=20261025-3"></script>
+  <script src="js/app.js?v=20261025-3"></script>
 </body>
 </html>

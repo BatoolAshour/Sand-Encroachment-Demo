@@ -2,8 +2,27 @@
 
 A browser dashboard for the physical prototype (a road inside a box with sand, a wind fan
 and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
-ready to show real sensor readings later. A separate **Satellite Monitoring** section analyses
+ready to show real Arduino readings. A separate **Satellite Monitoring** section analyses
 real Sentinel-2 images of Saudi highways for sand cover (section 10).
+
+## Current scope
+
+| Part | Status | Role |
+|---|---|---|
+| **Road simulation** (Low / Medium / High) | Included | **Main feature.** Animated road, readings, preset risk label, log, CSV. |
+| **Live Arduino mode** | Included, ready for hardware | Same road view fed by real `sand_01` / `wind_01` readings via `python/bridge.py` → WebSocket. |
+| **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** at the bottom of the page. Real images of real roads, kept separate from the prototype. |
+| Machine learning / future prediction | **Not included** | A separate future phase. No model, forecast or prediction algorithm is in this dashboard. |
+
+Rules this version follows:
+- Satellite values are **never** turned into Arduino sensor readings, never drawn on the road
+  simulation and never feed the risk label or the demo indicator.
+- Every value is labelled by origin: **Simulated readings** (Scenario / Demo), **Live Arduino
+  readings** (bridge connected) or **Real Sentinel-2 … satellite-derived** (satellite section).
+- The page keeps working when the Arduino, the bridge or the satellite backend is not there:
+  Scenario / Demo and the cached satellite images need nothing but the browser.
+- The "demo risk indicator" in the Field data panel is an illustrative weighted rule for the
+  sample scenarios only. It is not a prediction and is not calculated for satellite data.
 
 > **Scenario / Demo values are illustrative**, not real sensor readings. Risk levels are preset
 > display labels, not outputs of a trained model or validated thresholds.
@@ -31,6 +50,14 @@ named in a red line under the title instead of failing silently.
 
 No internet or backend is needed either way: the Satellite Monitoring section shows the
 **cached** real Sentinel-2 analyses in `data/satellite/` offline.
+
+**Live Arduino readings (when the hardware is plugged in):**
+```bash
+pip install -r python/requirements.txt
+python3 python/bridge.py --list-ports            # find the Arduino's port
+python3 python/bridge.py --port <port>           # then Live Sensor → Start in the dashboard
+```
+See section 7B.
 
 **Live satellite analysis (optional, needs internet):**
 ```bash
@@ -146,6 +173,11 @@ Also update `CONFIG.SHARED_DATA.schemaVersion` in `js/config.js`.
 | **Changing scenario while running** | The new scenario's readings appear immediately. |
 | **Sensor mode** | Scenario / Demo ↔ Live Sensor. Switching resets the run so demo and real values never mix. |
 
+The tag at the top right of the road panel always says where the numbers come from:
+**Simulated readings** (Scenario / Demo), **Live Arduino readings** (real readings arriving) or
+**Live · no sensor data** (Live mode, nothing received yet). The note under the risk panel
+changes with it.
+
 What is shown for a scenario:
 - **Sand depth (sand_01)** and **Wind speed (wind_01)**: the exact file values.
 - **Risk level**: the preset `risk_level` from the file (Low / Medium / High pills).
@@ -177,6 +209,10 @@ The panel has a source switch:
 The second option unlocks once an analysis is shown (cached analyses load at start), or with
 **Use in Field data panel**. With Sentinel-2 the weather cards show "—": the satellite does not
 measure weather, no weather service is connected, and the prototype's `wind_01` is not used.
+
+With Sentinel-2 selected the demo indicator shows **Not scored**: satellite values are shown for
+reference only, without a risk score. The strip above the road in the simulation is drawn only
+from the sample data and says "not drawn (satellite data has its own section)" otherwise.
 
 ### Sample data
 
@@ -265,14 +301,15 @@ Each factor is scaled to 0–1 in a straight line:
 The score is classified with `RISK_BANDS` (0–30 Low, 31–60 Medium, 61–100 High).
 The dashboard shows each factor's points and a one-line reason.
 
-**Missing inputs are never guessed.** A Sentinel-2 analysis has no wind speed (and no
-distance when no road geometry is available). The score then uses only the available
-factors, divided by their total weight, and is labelled **partial** (e.g. "High (partial)"),
-listing what was missing. Without sand coverage the indicator is not computed.
+The indicator is calculated **only for the sample scenarios**. Sentinel-2 analyses and live
+Arduino readings are not scored. (`assessEnvironmentalIndicator()` still never guesses a
+missing input: it would label a score "partial", but the dashboard no longer passes satellite
+data to it.)
 
 **Important:**
 - This rule only shows how several variables *could* feed a risk assessment. It is not
-  validated and it is **not** the future AI prediction model, which will be trained on real data.
+  validated, it is **not** a prediction, and machine learning is a separate future phase that
+  is not part of this dashboard.
 - Temperature and humidity are **not** used, and neither one alone decides road risk.
 - The main **Risk level** (top right) is the preset label from `shared_mock_data.json`.
   The demo indicator is a separate, explanatory value.
@@ -323,10 +360,32 @@ The dashboard then fetches the selected scenario from the API, validates it agai
 contract and shows "PRO-06 API" as the data origin. If the API is down or breaks the contract,
 the run stops and the problem is shown. (The backend must allow the request with CORS.)
 
-### B. Live sensors over WebSocket
-`CONFIG.LIVE_BACKEND_URL` is `null`, so Live mode shows "Hardware not connected / not configured"
-and never invents readings. When a backend sends readings, it must use the six-field contract,
-one reading or a list per message:
+### B. Live Arduino sensors over WebSocket
+
+**Steps with the hardware:**
+```bash
+pip install -r python/requirements.txt          # pyserial + websockets
+python3 python/bridge.py --list-ports            # find the Arduino, e.g. /dev/cu.usbmodem1101
+python3 python/bridge.py --port /dev/cu.usbmodem1101    # options: --baud 9600 --ws-port 8765
+```
+Then open the dashboard, choose **Live Sensor** and press **Start**. The Arduino prints one
+reading per line, either `sand_01,2.4` or `{"sensor_id": "wind_01", "value": 6.1}`.
+
+`CONFIG.LIVE_BACKEND_URL` defaults to `ws://localhost:8765`, the bridge's address (set it to
+`null` to switch Live mode off). How the dashboard behaves:
+
+| Situation | What you see |
+|---|---|
+| Bridge not running | "Could not reach ws://localhost:8765. Is bridge.py running?" No values are shown. |
+| Connected, readings arriving | Tag **Live Arduino readings**, values and road update, rows logged. |
+| Connected, no reading for 10 s (`LIVE_STALE_AFTER_MS`) | Amber "Live: connected, no readings" with a hint to check the cable, port and sketch. Clears when readings return. |
+| Bridge stopped during a run | Reconnects automatically (3 tries, 2 s apart: `LIVE_RECONNECT_ATTEMPTS`, `LIVE_RECONNECT_DELAY_MS`), then stops with a clear message. |
+| USB cable pulled | `bridge.py` prints "Serial connection lost" and stops; restart it. |
+
+Start / Stop / Reset are forwarded to the Arduino as `START` / `STOP` / `RESET` lines.
+Scenario / Demo keeps working the whole time; switching modes resets the run.
+
+Readings must use the six-field contract, one reading or a list per message:
 ```json
 { "timestamp": "2026-10-23T11:00:00Z", "sensor_id": "sand_01", "value": 2.1,
   "unit": "cm", "source": "live", "status": "ok" }
@@ -335,15 +394,30 @@ Readings with wrong fields, unknown sensor IDs or wrong units are ignored.
 **Open point:** v1.0 only defines `source: "scenario"`. `"live"` is a proposal to agree with
 PRO-06 in a v2.0 file.
 
-`python/bridge.py` is a reference template (Arduino lines `sand_01,2.4` or
-`{"sensor_id": "wind_01", "value": 6.1}` → WebSocket + CSV in contract format). PRO-06 owns
-the real backend.
+`python/bridge.py` also writes every reading to a CSV in contract format. PRO-06 owns the
+real backend; the bridge is the reference for the message format.
 
 Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRATION POINT]`**.
 
 ---
 
 ## 8. What was tested
+
+Scope refinement, tested on 25 Oct 2026 (Chromium, real mouse clicks):
+- Every control clicked by double-click (`file://`) and via `http.server`: Start, Stop, Resume,
+  Reset, Low / Medium / High (also mid-run), both sensor modes, CSV export, Clear log, Field data
+  source switch and all satellite controls. No control is covered by another element at six
+  window widths; no horizontal scrolling at 390 px.
+- Scenario values and demo scores are unchanged from `main` (0.5 / 2.5 / 5 cm, 2 / 6 / 11 m/s,
+  scores 17 / 56 / 91). Labels: "Simulated readings" in Scenario / Demo.
+- Satellite isolation: with Sentinel-2 selected the indicator says "Not scored", the road strip
+  is not drawn from satellite data, and no satellite value reaches the readings, risk or log.
+- Live mode without the bridge: honest "Is bridge.py running?" message, no values.
+- Live mode with `bridge.py` on a virtual serial port: readings tagged "Live Arduino readings",
+  risk "Not classified", START / STOP forwarded, the no-readings warning appears and clears,
+  automatic reconnect after the bridge is restarted, a clear message after the retries run out,
+  and Scenario / Demo works normally afterwards.
+- Satellite backend offline: cached images work, Live analysis shows "backend not reachable".
 
 Satellite integration, tested on 25 Oct 2026 (Chromium + Python 3):
 - `python -m unittest discover -s tests` (in `python/`): 8 offline tests. Synthetic scenes check
@@ -389,11 +463,11 @@ Tested in Chromium on 23 Oct 2026:
 - The road picture scale (6 cm = full road) is a display choice, not part of the shared data.
 - No cm thresholds are agreed, so live readings are not classified.
 - The PRO-06 scenario endpoint and a `source` value for live readings are not agreed yet.
-- `bridge.py` has not been tested with a real Arduino/ESP32.
+- `bridge.py` has been tested with a virtual serial port, not yet with a real Arduino/ESP32.
 - The field data sample (satellite + weather) is separate illustrative data; its wind differs
   from `wind_01` on purpose. The demo rule's weights are not calibrated.
 - The browser log is cleared when the page is refreshed.
-- No AI map or prediction model is included (out of scope for PRO-01).
+- No machine learning, AI map or prediction model is included. That is a separate future phase.
 - Satellite sand detection is rule-based and not validated against field data; see
   "Limitations" in section 10.
 

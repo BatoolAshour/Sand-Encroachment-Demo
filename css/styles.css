@@ -88,9 +88,9 @@ code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
   grid-template-areas:
     "sim     sim     status"
     "control control control"
-    "sat     sat     sat"
     "env     env     env"
-    "data    log     log";
+    "data    log     log"
+    "sat     sat     sat";
   gap: var(--gap);
   padding: 16px 28px;
   max-width: 1400px;
@@ -307,7 +307,18 @@ tr.empty td { color: var(--muted); text-align: center; padding: 22px; }
 .tag[data-level="Medium"] { background: rgba(227,163,42,0.18);  color: var(--medium); }
 .tag[data-level="High"]   { background: rgba(224,80,63,0.18);   color: var(--high); }
 
-/* ---------- Satellite monitoring (real Sentinel-2) ---------- */
+/* ---------- Data-source tags (simulated / live / satellite) ---------- */
+.sim-head-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.source-tag {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid currentColor;
+}
+.source-tag[data-kind="simulated"] { color: var(--medium); background: rgba(227,163,42,0.10); }
+.source-tag[data-kind="live"]      { color: var(--low);    background: rgba(47,179,107,0.12); }
+.source-tag[data-kind="none"]      { color: var(--muted);  background: transparent; }
+
+/* ---------- Satellite monitoring (real Sentinel-2, optional) ---------- */
+.sat-panel { border-style: dashed; }
 .real-badge {
   font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
   color: #4fc3f7; border: 1px solid #4fc3f7;
@@ -368,7 +379,7 @@ tr.empty td { color: var(--muted); text-align: center; padding: 22px; }
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;
-    grid-template-areas: "sim" "status" "control" "sat" "env" "data" "log";
+    grid-template-areas: "sim" "status" "control" "env" "data" "log" "sat";
   }
 }
 @media (max-width: 700px) {

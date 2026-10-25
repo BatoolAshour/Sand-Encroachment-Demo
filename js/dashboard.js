@@ -132,6 +132,9 @@ function updateDashboard(sensorData) {
     : sensorData.mode === "live" && hasSand ? "Not classified: no sand_01 thresholds agreed yet."
     : "Press Start to play the selected scenario.";
 
+  // 4b) Where the readings come from (never mixed: switching mode resets)
+  renderReadingSource(sensorData);
+
   // 5) Status
   const badge = $("status-badge");
   badge.dataset.status = sensorData.status;
@@ -173,6 +176,27 @@ function renderReadingsTable(readings) {
   body.innerHTML = readings.map((r) => `
     <tr><td>${r.sensor_id}</td><td>${r.value}</td><td>${r.unit}</td>
         <td>${r.source}</td><td>${r.status}</td><td>${r.timestamp}</td></tr>`).join("");
+}
+
+/* ---------------------------------------------------------------------
+ * Reading-source label: simulated (scenario file) vs real Arduino sensors.
+ * Satellite data is never a reading; it has its own section and badge.
+ * --------------------------------------------------------------------- */
+function renderReadingSource(data) {
+  const hasReadings = data.readings && data.readings.length > 0;
+  const kind = data.mode === "simulation" ? "simulated" : hasReadings ? "live" : "none";
+  const tag = $("reading-source");
+  if (tag) {
+    tag.dataset.kind = kind;
+    tag.textContent = {
+      simulated: "Simulated readings",
+      live: "Live Arduino readings",
+      none: "Live · no sensor data",
+    }[kind];
+  }
+  setText("status-disclaimer", data.mode === "simulation"
+    ? "Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds."
+    : "Live Sensor Mode shows only real readings from the Arduino (via python/bridge.py), exactly as received. Risk stays \"Not classified\" until sand_01 thresholds are agreed.");
 }
 
 /* ---------------------------------------------------------------------
@@ -249,6 +273,15 @@ function renderEnvironment(env, indicator) {
       (s.distance_to_road_m === null ? ` · Distance not computed: ${s.distance_note}.` : " · Distance from road centreline.")
     : `Observation ${s.observation_date} · ${s.buffer_m} m strip beside the road · ${env.location}`);
 
+  if (!indicator) {
+    // Satellite-derived values are shown for reference only: no risk score.
+    set("e-score", "—");
+    set("e-level", "Not scored");
+    $("e-level").dataset.level = "";
+    set("e-explain", "The demo indicator is only calculated for the sample scenarios. Satellite-derived values are shown for reference, without a risk score or prediction.");
+    $("e-contrib").innerHTML = "";
+    return;
+  }
   set("e-score", show(indicator.score));
   set("e-level", indicator.level ? (indicator.partial ? `${indicator.level} (partial)` : indicator.level) : "—");
   $("e-level").dataset.level = indicator.level || "";
@@ -274,7 +307,11 @@ const SHRUB_SLOTS = [
   [430, 0.7], [490, 0.4], [560, 0.6], [620, 0.5], [650, 0.25], [780, 0.7],
 ];
 
-function drawStrip(env) {
+function drawStrip(fieldData) {
+  // The strip belongs to the road simulation: only the SAMPLE field data may
+  // shape it. A real satellite analysis never changes the simulated road.
+  const env = fieldData && fieldData.data_kind !== "satellite-derived" ? fieldData : null;
+  const satelliteShown = !!fieldData && !env;
   const dist = env ? env.satellite.distance_to_road_m : null;
   const edgeY = dist !== null ? 118 - (Math.min(dist, 150) / 150) * 100 : 60;
 
@@ -309,9 +346,9 @@ function drawStrip(env) {
   const wind = fieldWind !== null && fieldWind > 0 ? fieldWind : 5;
   $("wind").style.setProperty("--wind-duration", `${Math.max(0.25, 3 / wind).toFixed(2)}s`);
   $("wind-label").textContent = fieldWind !== null ? `Wind ${fieldWind.toFixed(1)} m/s (sample)` : "Wind";
-  $("svg-source-note").textContent = !env ? "Strip above road: no data source"
-    : env.data_kind === "satellite-derived" ? "Strip above road: Sentinel-2 analysis (real road, not to scale)"
-    : "Strip above road: sample satellite data";
+  $("svg-source-note").textContent = env ? "Strip above road: sample field data"
+    : satelliteShown ? "Strip above road: not drawn (satellite data has its own section)"
+    : "Strip above road: no data source";
 }
 
 function riskMessage(data) {
