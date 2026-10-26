@@ -4,8 +4,10 @@ A browser dashboard for the physical prototype (a road inside a box with sand, a
 and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
 ready to show real Arduino readings. A separate **Satellite Monitoring** section analyses
 real Sentinel-2 images of the team's three **research routes** (Routes 3, 4 and 5, from the
-KMZ study-area files) for sand cover (section 10), and the Field data panel shows **real
-weather** for the same road segments from Open-Meteo (section 11).
+KMZ study-area files) for sand cover (section 10), and **Weather Monitoring** shows **real
+weather** for the same road segments from Open-Meteo (section 11). A sidebar switches between
+five views: Overview, Road Simulation, Satellite Monitoring, Weather Monitoring and Experiment
+Logs (see "Navigating the dashboard" in section 1).
 
 ## Current scope
 
@@ -13,8 +15,8 @@ weather** for the same road segments from Open-Meteo (section 11).
 |---|---|---|
 | **Road simulation** (Low / Medium / High) | Included | **Main feature.** Animated road, readings, preset risk label, log, CSV. |
 | **Live Arduino mode** | Included, ready for hardware | Same road view fed by real `sand_01` / `wind_01` readings via `python/bridge.py` → WebSocket. |
-| **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** at the bottom of the page. Real images of the research routes (KMZ), kept separate from the prototype. |
-| **Real weather** (Open-Meteo) | Included, optional | Historical / current wind, gusts, direction, temperature, humidity and rain at a route segment, inside the Field data panel. Kept apart from the Arduino fan and sensors. |
+| **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** in the sidebar. Real images of the research routes (KMZ), kept separate from the prototype. |
+| **Real weather** (Open-Meteo) | Included, optional | Historical / current wind, gusts, direction, temperature, humidity and rain at a route segment, in its own Weather Monitoring view. Kept apart from the Arduino fan and sensors. |
 | Machine learning / future prediction | **Not included** | A separate future phase. No model, forecast or prediction algorithm is in this dashboard. |
 
 Rules this version follows:
@@ -46,12 +48,12 @@ python3 -m http.server 8000
 Then open <http://localhost:8000>.
 
 **Quick (no terminal):** double-click `index.html`. Browsers block reading JSON files this way,
-so the page uses `js/sharedMockData.js`, an exact generated copy of the same file. The banner
-under the title always says which one was loaded.
+so the page uses `js/sharedMockData.js`, an exact generated copy of the same file. The *System
+checks* card in Overview always says which one was loaded.
 
 If the buttons do not respond after updating the files, reload with **Cmd+Shift+R**
 (Ctrl+F5 on Windows) so the browser drops old cached copies. Any part that fails to start is
-named in a red line under the title instead of failing silently.
+named in a red line under the page header instead of failing silently.
 
 No internet or backend is needed either way: the Satellite Monitoring section shows the
 **cached** real Sentinel-2 analyses in `data/satellite/` offline. **Real weather** is fetched
@@ -73,6 +75,25 @@ python3 python/satellite_server.py       # then open http://localhost:8780
 ```
 See section 10 for Copernicus credentials and the offline cache.
 
+### Navigating the dashboard
+
+The sidebar (a ☰ menu on tablets and phones) switches between five views. Each view has its own
+address, so `index.html#weather` opens Weather Monitoring directly and the browser's Back button
+works. Switching views only shows and hides sections: a running experiment keeps running and
+logging while another view is open.
+
+| View | What it is for |
+|---|---|
+| **Overview** | Status at a glance: the road simulation (status, mode, scenario, readings), the Arduino bridge, cached satellite analyses, weather, the experiment log and system checks, each with a link to its view. |
+| **Road Simulation** | The main demo: the road picture, Scenario / Live switch, Low / Medium / High, Start / Stop / Reset, live readings, gauge, preset risk label and road condition. *Reading details* (timestamps, raw contract fields, the data object) and the Field data panel (section 5) sit underneath. |
+| **Satellite Monitoring** | Route → segment → date, Cached or Live, the original and processed images side by side, sand measurements, collapsible technical details, and a note on detection versus prediction (section 10). |
+| **Weather Monitoring** | Open-Meteo weather for a route segment: six values, compass, a wind-through-the-day chart (click a bar to pick that hour) and the source details (section 11). |
+| **Experiment Logs** | Every recorded reading, newest first, with run summaries, filters (run, sensor, source) and CSV export (section 6). |
+
+Colour shows where a value comes from, everywhere on the page: **amber** simulated scenario,
+**green** live Arduino sensor, **blue** satellite-derived, **violet** weather model. The key is
+at the bottom of the sidebar.
+
 ---
 
 ## 2. Folder structure
@@ -89,9 +110,10 @@ See section 10 for Copernicus credentials and the offline cache.
 │   ├── environmentData.js     Field data SAMPLE (satellite + weather) + record checks
 │   ├── environmentRule.js     Demo multi-variable indicator + explanation
 │   ├── satellite.js           Satellite Monitoring section (cached + live Sentinel-2)
-│   ├── weather.js             Real weather (Open-Meteo): requests, cache, labels, weather block
+│   ├── weather.js             Real weather (Open-Meteo): requests, cache, labels, Weather Monitoring view
 │   ├── logger.js              Experiment log + CSV export
-│   ├── dashboard.js           Drawing: updateDashboard(sensorData) and helpers
+│   ├── dashboard.js           Drawing: updateDashboard(sensorData), log table, helpers
+│   ├── views.js               Sidebar navigation between the five views + Overview cards
 │   └── app.js                 State + button logic; connects everything
 ├── python/
 │   ├── sync_shared_data.py    Regenerates / checks js/sharedMockData.js
@@ -225,9 +247,10 @@ The panel has a source switch:
 | **Sentinel-2 analysis** | The analysis currently shown in Satellite Monitoring (section 10). It stays put when the scenario changes. | "Real Sentinel-2 data · satellite-derived, not from the prototype" (blue) |
 
 The second option unlocks once an analysis is shown (cached analyses load at start), or with
-**Use in Field data panel**. With Sentinel-2 the three weather cards in the grid show "—" (the
-satellite does not measure weather and `wind_01` is not used) and point to the **Real weather**
-block underneath, which shows Open-Meteo weather for the same segment and date (section 11).
+**Show in road field data** (Satellite Monitoring), which opens the Road Simulation view at this
+panel. With Sentinel-2 the three weather cards in the grid show "—" (the satellite does not
+measure weather and `wind_01` is not used) and point to **Weather Monitoring**, which shows
+Open-Meteo weather for the same segment and date (section 11).
 With the sample scenario those cards are labelled **Simulated · sample scenario**.
 
 With Sentinel-2 selected the demo indicator shows **Not scored**: satellite values are shown for
@@ -364,6 +387,9 @@ describes a real road, not the box.
 - `timestamp` is the reading's own time from the file (2026-10-22T12:00:00Z for all scenarios);
   `received_at` is when the dashboard received it.
 - The log lives in browser memory: refreshing the page clears it. Export before closing.
+- The **Experiment Logs** view shows one summary per run (scenario, readings, time span), filters
+  by run, sensor and source, and a table of the newest 500 matching rows, newest first. The
+  filters only change the table; **Export CSV** always contains every reading.
 
 ---
 
@@ -422,6 +448,21 @@ Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRAT
 ---
 
 ## 8. What was tested
+
+Dashboard layout (sidebar + five views), tested on 26 Oct 2026 in Chromium at 1440, 900/820
+and 390 px wide, using the real sidebar (no view forced open): every view by sidebar, Overview
+card links, address (`#weather`) and the Back button; Low → High while running, Stop, Reset and
+a second run after switching views; Overview mirrors the running simulation and the Arduino
+bridge state; Reading details opens; log run summaries, run / sensor / source filters, the
+"no match" state and a CSV export with every reading; a cached satellite analysis, technical
+details, *Show in road field data* opening the Road view at the field panel; a live satellite
+analysis started, left and returned to while it ran; weather from the shipped cache, a chart
+click choosing the hour, *Match satellite image*, an Open-Meteo request (mocked) for an
+uncached date; Live mode without the bridge (honest error, Overview shows disconnected) and
+with `bridge.py` on a virtual serial port (connected, readings, Overview shows Live sensor);
+the phone menu (opens, closes on a choice and on Escape); no horizontal scrolling and no
+JavaScript errors. The earlier control, route, weather and live-bridge tests below still pass
+with the new layout (one old check, "satellite section is below the log", no longer applies).
 
 Real weather, tested on 26 Oct 2026 (Chromium + Python 3):
 - `python -m unittest discover -s tests` (in `python/`): 24 offline tests, all pass. New for
@@ -579,7 +620,7 @@ Route 4. The two Route 4 files that were supplied are identical (same SHA-256); 
    KMZ centreline yellow, the segment's 2 km study area outlined in cyan (outside it darkened),
    the road buffer in white, cloud / water / no-data grey. It names the route, segment, scene
    date and analysis area.
-6. **Use in Field data panel** sends the study-area values to the Environmental panel (section 5).
+6. **Show in road field data** sends the study-area values to the Environmental panel (section 5).
 
 | Source switch | Needs | Notes |
 |---|---|---|
@@ -707,20 +748,23 @@ distance are `null` with `distance_to_road_m_reason`.
 - Distance is measured to the centreline, not the paved edge (road width is not known).
 - 10 m pixels cannot see a thin sand film on asphalt; the result describes sand around the road.
 - The scene is the nearest clear one to the chosen date (the date used is always shown).
-- No weather data is stored in satellite results; the Real weather block (section 11) shows it
+- No weather data is stored in satellite results; Weather Monitoring (section 11) shows it
   next to them.
 
 ---
 
 ## 11. Real weather (Open-Meteo)
 
-The **Real weather** block at the bottom of the Field data panel shows real-world weather at a
-research-route segment. It never drives the fan, the road animation or `wind_01`, is never
+The **Weather Monitoring** view shows real-world weather at a research-route segment. Every value
+is labelled *Model-derived · not a sensor*. It never drives the fan, the road animation or `wind_01`, is never
 written to the experiment log and is not used by any risk label or indicator.
 
 **Using it:** choose *Route*, *Segment* and *Observation date* (and *Hour*, Riyadh time), then
 **Get weather**. **Match satellite image** copies the route, segment, scene date and scene hour of
-the image shown in Satellite Monitoring. **Reload from Open-Meteo** skips the cache.
+the image shown in Satellite Monitoring. **Reload** asks Open-Meteo again and skips the cache.
+The **Wind through the day** chart shows hourly wind speed (line), gusts (bars) and the direction
+the wind blows toward (arrows, every three hours); click a bar to show that hour. For today, only
+the hours so far are drawn.
 
 | Shown | Open-Meteo variable (10 m wind, 2 m air) |
 |---|---|

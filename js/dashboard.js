@@ -258,7 +258,7 @@ function renderEnvironment(env, indicator) {
   set("e-wind", w.wind_speed_mps === null ? "—" : w.wind_speed_mps.toFixed(1));
   set("e-weather-kind", real ? "Not part of the satellite analysis" : "Simulated · sample scenario");
   set("e-weather-note", real
-    ? `Not available here: ${env.weather_note || "Sentinel-2 does not measure weather."} Real Open-Meteo weather for this segment is in "Real weather" below. The prototype's wind_01 sensor is not used here.`
+    ? `Not available here: ${env.weather_note || "Sentinel-2 does not measure weather."} Real Open-Meteo weather for this segment is in Weather Monitoring. The prototype's wind_01 sensor is not used here.`
     : "Simulated weather from the sample scenario (not real observations), separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.");
   set("e-sand", pct(s.sand_coverage_pct));
   set("e-veg", pct(s.vegetation_coverage_pct));
@@ -417,15 +417,50 @@ function setHint(text) {
 
 function renderLog(logger) {
   $("log-count").textContent = `(${logger.count} reading${logger.count === 1 ? "" : "s"})`;
+  setText("nav-log-count", logger.count > 999 ? "999+" : String(logger.count));
   $("btn-export").disabled = logger.count === 0;
   $("btn-clear-log").disabled = logger.count === 0;
+
+  // Filters (Experiment Logs view). They only change what is shown; the CSV keeps every row.
+  const runs = [...new Set(logger.entries.map((e) => e.run_id))];
+  const runSel = $("log-filter-run");
+  if (runSel) {
+    const keep = runSel.value;
+    const want = ["", ...runs.map(String)];
+    if ([...runSel.options].map((o) => o.value).join() !== want.join()) {
+      runSel.innerHTML = '<option value="">All runs</option>' + runs.map((r) => `<option value="${r}">Run #${r}</option>`).join("");
+    }
+    runSel.value = want.includes(keep) ? keep : "";
+  }
+  const pick = (id) => ($(id) ? $(id).value : "");
+  const f = { run: pick("log-filter-run"), sensor: pick("log-filter-sensor"), source: pick("log-filter-source") };
+  const rows = logger.entries.filter((e) =>
+    (!f.run || String(e.run_id) === f.run) && (!f.sensor || e.sensor_id === f.sensor) && (!f.source || e.source === f.source));
+
+  // One summary chip per run: what was played, how many readings, when.
+  const runsBox = $("log-runs");
+  if (runsBox) {
+    runsBox.innerHTML = runs.map((r) => {
+      const es = logger.entries.filter((e) => e.run_id === r);
+      const scen = [...new Set(es.map((e) => e.scenario_id || "live"))].join(", ");
+      return `<div class="run-chip"><b>Run #${r}</b><span>${scen}</span><span>${es.length} readings · ${formatTime(es[0].received_at)}–${formatTime(es[es.length - 1].received_at)}</span></div>`;
+    }).join("");
+  }
 
   const body = $("log-body");
   if (logger.count === 0) {
     body.innerHTML = '<tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>';
+    setText("log-shown", "");
     return;
   }
-  body.innerHTML = logger.latest(CONFIG.LOG_ROWS_VISIBLE).map((e) => `
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty"><td colspan="8">No readings match these filters.</td></tr>';
+    setText("log-shown", `0 of ${logger.count} readings shown`);
+    return;
+  }
+  const shown = rows.slice(-CONFIG.LOG_ROWS_VISIBLE).reverse();
+  setText("log-shown", `${shown.length} of ${logger.count} readings shown, newest first`);
+  body.innerHTML = shown.map((e) => `
     <tr>
       <td>#${e.run_id}</td>
       <td>${formatTime(e.received_at)}</td>
@@ -433,7 +468,7 @@ function renderLog(logger) {
       <td>${e.sensor_id}</td>
       <td>${e.value}</td>
       <td>${e.unit}</td>
-      <td>${e.source}</td>
+      <td><span class="origin origin-sm" data-origin="${e.source === "live" ? "live" : "simulated"}">${e.source}</span></td>
       <td>${e.preset_risk_level ? `<span class="tag" data-level="${displayRisk(e.preset_risk_level)}">${e.preset_risk_level}</span>` : "—"}</td>
     </tr>`).join("");
 }

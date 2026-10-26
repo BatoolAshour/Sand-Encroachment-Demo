@@ -243,7 +243,51 @@ function weatherLabel(record, from) {
 }
 
 
-// ---------- The weather block in the Field data panel ----------
+// ---------- Hourly wind chart (Weather view) ----------
+// Bars = gusts, line = 10 m wind speed, arrows = direction the wind blows TO.
+// Today: only the hours up to now (no forecast hours are drawn).
+function weatherChartSvg(record, hour) {
+  const h = record.response.hourly;
+  const now = record.kind === "current" && record.response.current ? record.response.current.time : null;
+  const W = 960, H = 250, x0 = 44, x1 = W - 12, y0 = 40, y1 = H - 28;
+  const bw = (x1 - x0) / 24;
+  const pts = h.time.map((t, i) => ({
+    i, hr: Number(t.slice(11, 13)),
+    speed: now && t > now ? null : h.wind_speed_10m[i],
+    gust: now && t > now ? null : h.wind_gusts_10m[i],
+    dir: now && t > now ? null : h.wind_direction_10m[i],
+  }));
+  const top = Math.max(5, ...pts.map((p) => Math.max(p.speed || 0, p.gust || 0)));
+  const step = top > 20 ? 10 : 5;
+  const ymax = Math.ceil(top / step) * step;
+  const Y = (v) => y1 - (v / ymax) * (y1 - y0);
+  const X = (hr) => x0 + bw * hr + bw / 2;
+  const out = [];
+  for (let v = 0; v <= ymax; v += step) {
+    out.push(`<line class="ch-grid" x1="${x0}" x2="${x1}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ch-tick" x="${x0 - 8}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`);
+  }
+  out.push(`<text class="ch-tick" x="${x0 - 8}" y="${y0 - 14}" text-anchor="end">m/s</text>`);
+  const sel = pts.find((p) => p.hr === hour);
+  if (sel && !now) out.push(`<rect class="ch-sel" x="${x0 + bw * sel.hr}" y="${y0 - 30}" width="${bw}" height="${y1 - y0 + 30}" rx="4"/>`);
+  pts.forEach((p) => {
+    if (p.gust !== null && p.gust !== undefined) {
+      out.push(`<rect class="ch-gust" x="${X(p.hr) - bw * 0.32}" y="${Y(p.gust)}" width="${bw * 0.64}" height="${y1 - Y(p.gust)}" rx="2"/>`);
+    }
+    if (p.hr % 3 === 0) {
+      out.push(`<text class="ch-tick" x="${X(p.hr)}" y="${H - 8}" text-anchor="middle">${String(p.hr).padStart(2, "0")}</text>`);
+      if (p.dir !== null && p.dir !== undefined) {
+        out.push(`<g transform="rotate(${(p.dir + 180) % 360} ${X(p.hr)} ${y0 - 18})"><path class="ch-arrow" d="M${X(p.hr)} ${y0 - 27} l5 9 h-3.5 v8 h-3 v-8 h-3.5z"/></g>`);
+      }
+    }
+  });
+  const line = pts.filter((p) => p.speed !== null && p.speed !== undefined).map((p) => `${X(p.hr)},${Y(p.speed)}`);
+  if (line.length) out.push(`<polyline class="ch-speed" points="${line.join(" ")}"/>`);
+  pts.forEach((p) => { if (p.speed !== null && p.speed !== undefined) out.push(`<circle class="ch-dot${p.hr === hour && !now ? " on" : ""}" cx="${X(p.hr)}" cy="${Y(p.speed)}" r="${p.hr === hour && !now ? 4.5 : 2.5}"/>`); });
+  if (!now) pts.forEach((p) => out.push(`<rect class="ch-hit" data-hour="${p.hr}" x="${x0 + bw * p.hr}" y="${y0 - 30}" width="${bw}" height="${y1 - y0 + 30}"><title>${String(p.hr).padStart(2, "0")}:00 · ${p.speed ?? "—"} m/s, gusts ${p.gust ?? "—"} m/s</title></rect>`));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wind speed and gusts on ${record.date}">${out.join("")}</svg>`;
+}
+
+// ---------- The weather block (Weather Monitoring view) ----------
 const WeatherPanel = {
   ready: false,
   busy: false,
@@ -269,6 +313,14 @@ const WeatherPanel = {
     $("wx-segment").addEventListener("change", () => this.clear());
     $("wx-date").addEventListener("change", () => this.dateChanged());
     $("wx-hour").addEventListener("change", () => this.render());
+    if ($("wx-chart")) {
+      $("wx-chart").addEventListener("click", (e) => {
+        const hit = e.target.closest("[data-hour]");
+        if (!hit || $("wx-hour").disabled) return;
+        $("wx-hour").value = hit.dataset.hour;
+        this.render();
+      });
+    }
     $("btn-wx-get").addEventListener("click", () => this.load(false));
     $("btn-wx-refresh").addEventListener("click", () => this.load(true));
     $("btn-wx-sat").addEventListener("click", () => { this.userPicked = true; this.matchSatellite(true); });
@@ -390,6 +442,7 @@ const WeatherPanel = {
       $("wx-badge").dataset.kind = "none";
       set("wx-badge", "No real weather loaded");
       set("wx-time", "—");
+      if ($("wx-chart")) $("wx-chart").innerHTML = '<p class="empty-state">Load weather to see the hourly wind.</p>';
       return;
     }
     let v;
@@ -433,5 +486,6 @@ const WeatherPanel = {
     set("wx-meta", `${r ? r.name : this.record.route_id} · segment ${seg ? seg.index : "?"} centre ` +
       `${this.record.lat.toFixed(4)}°N, ${this.record.lon.toFixed(4)}°E → model grid ${v.grid.lat.toFixed(2)}°N, ` +
       `${v.grid.lon.toFixed(2)}°E, ${v.grid.elevation_m ?? "—"} m. Modelled for the grid cell, not a weather-station reading.`);
+    if ($("wx-chart")) $("wx-chart").innerHTML = weatherChartSvg(this.record, Number($("wx-hour").value));
   },
 };

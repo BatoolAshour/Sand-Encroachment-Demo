@@ -118,6 +118,6 @@ const CONFIG = {
     vegetation_coverage_pct: { weight: 0.15, low: 30,  high: 0,  label: "Low vegetation" },
   },
 
-  // Number of rows shown in the on-screen log table (the CSV keeps all rows).
-  LOG_ROWS_VISIBLE: 8,
+  // Rows shown in the Experiment Logs table, newest first (the CSV keeps all rows).
+  LOG_ROWS_VISIBLE: 500,
 };
