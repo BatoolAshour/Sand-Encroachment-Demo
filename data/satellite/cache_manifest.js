@@ -3,7 +3,7 @@
  * Research routes (from the KMZ files) and real Sentinel-2 analyses for offline use;
  * see README section 10. */
 const SATELLITE_CACHE = {
- "generated_at": "2026-10-25T17:58:56Z",
+ "generated_at": "2026-10-26T18:38:37Z",
  "routes": [
   {
    "id": "route3_al_ahsa_salwa",
@@ -3593,6 +3593,150 @@ const SATELLITE_CACHE = {
    "images": {
     "original": "data/satellite/cache/route4_abqaiq_salasil_s03/2026-10-08/original.jpg",
     "overlay": "data/satellite/cache/route4_abqaiq_salasil_s03/2026-10-08/overlay.jpg"
+   }
+  },
+  {
+   "schema": "pro01-satellite-analysis/1.1",
+   "data_kind": "satellite-derived",
+   "disclaimer": "Derived from real Sentinel-2 satellite imagery. Not a measurement from the physical prototype (sand_01 / wind_01). Rule-based detection, not validated in the field.",
+   "location": {
+    "id": "route4_abqaiq_salasil_s03",
+    "name": "Route 4: Abqaiq \u2013 Salasil \u00b7 segment 3 of 9",
+    "lat": 26.010582,
+    "lon": 49.595954,
+    "size_m": 8900,
+    "width_m": 8900,
+    "height_m": 6030,
+    "epsg": 32639,
+    "bounds_wgs84": [
+     49.552233,
+     25.985233,
+     49.641794,
+     26.040529
+    ]
+   },
+   "route": {
+    "id": "route4_abqaiq_salasil",
+    "number": 4,
+    "name": "Route 4: Abqaiq \u2013 Salasil",
+    "from": "Abqaiq",
+    "to": "Salasil",
+    "length_m": 46190.5,
+    "source_kmz": "data/satellite/routes/source/Abqaiq_Salasil_Route4_2km_Study_Area.kmz",
+    "sha256": "5a81976f83a06f46dc62c5aea7c668cd2f7eafacc25cb28cce22018c00311e77",
+    "geojson": "data/satellite/routes/route4_abqaiq_salasil.geojson",
+    "study_half_width_m": 2000
+   },
+   "segment": {
+    "id": "route4_abqaiq_salasil_s03",
+    "index": 3,
+    "start_m": 10264.5,
+    "end_m": 15396.8,
+    "length_m": 5132.3,
+    "center": [
+     49.595954,
+     26.010582
+    ],
+    "epsg": 32639,
+    "bounds_utm": [
+     355150,
+     2874850,
+     364050,
+     2880880
+    ],
+    "bounds_wgs84": [
+     49.552233,
+     25.985233,
+     49.641794,
+     26.040529
+    ],
+    "width_m": 8900,
+    "height_m": 6030,
+    "count": 9
+   },
+   "analysis_area": {
+    "basis": "segment part of the 2 km study area (KMZ)",
+    "study_half_width_m": 2000,
+    "road_buffer_m": 200,
+    "image_km": [
+     8.9,
+     6.03
+    ]
+   },
+   "requested_date": "2026-10-20",
+   "scene": {
+    "id": "S2B_39RUJ_20261018_0_L2A",
+    "date": "2026-10-18",
+    "datetime": "2026-10-18T07:32:32.755000Z",
+    "tile_cloud_pct": 0.01,
+    "collection": "Sentinel-2 Level-2A (surface reflectance)",
+    "resolution_m": 10,
+    "provider": "AWS Open Data (Sentinel-2 L2A COGs, Element 84)",
+    "mosaic_tiles": [],
+    "attribution": "Contains modified Copernicus Sentinel data 2026"
+   },
+   "road": {
+    "available": true,
+    "method": "kmz",
+    "source": "Route centreline from Abqaiq_Salasil_Route4_2km_Study_Area.kmz (unchanged KMZ coordinates)",
+    "note": null
+   },
+   "measurements": {
+    "area_km2": 20.54,
+    "image_km2": 53.67,
+    "valid_pct": 100.0,
+    "cloud_pct": 0.0,
+    "area_sand_coverage_pct": 44.8,
+    "area_vegetation_pct": 1.9,
+    "area_other_bare_pct": 47.4,
+    "buffer_m": 200,
+    "sand_coverage_pct": 19.1,
+    "vegetation_coverage_pct": 2.7,
+    "bare_soil_pct": 71.2,
+    "distance_to_road_m": 10,
+    "strip_valid_pixels": 21098,
+    "sand_within_20m_of_centreline_px": 7
+   },
+   "processing": {
+    "version": "1.1",
+    "processed_at": "2026-10-26T18:38:37Z",
+    "steps": [
+     "analysis area: segment part of the KMZ 2 km study area (pixels nearer to this segment than to the rest of the route); road = KMZ centreline",
+     "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
+     "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
+     "thresholding: Bare Soil Index > 0, NDVI < 0.15, brightness above asphalt/shadow",
+     "texture analysis: local standard deviation (5 x 5 px) must be low",
+     "morphology: opening, closing, removal of patches and holes < 0.25 ha"
+    ],
+    "parameters": {
+     "sand_hue_deg": [
+      8.0,
+      48.0
+     ],
+     "saturation_bounds": [
+      0.45,
+      0.65
+     ],
+     "min_brightness": 0.15,
+     "min_bsi": 0.0,
+     "max_ndvi_sand": 0.15,
+     "vegetation_ndvi": 0.25,
+     "texture_window_px": 5,
+     "max_texture": 0.015,
+     "min_patch_px": 25,
+     "buffer_m": 200
+    },
+    "diagnostics": {
+     "saturation_threshold": 0.558,
+     "saturation_threshold_method": "Otsu",
+     "candidate_pixels": 266983,
+     "after_morphology_pixels": 276685,
+     "texture_rejected_pixels": 47985
+    }
+   },
+   "images": {
+    "original": "data/satellite/cache/route4_abqaiq_salasil_s03/2026-10-18/original.jpg",
+    "overlay": "data/satellite/cache/route4_abqaiq_salasil_s03/2026-10-18/overlay.jpg"
    }
   },
   {
