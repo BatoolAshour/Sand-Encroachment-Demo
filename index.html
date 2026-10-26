@@ -3,294 +3,704 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect x=%271%27 y=%271%27 width=%2730%27 height=%2730%27 rx=%277%27 fill=%27%230f2740%27 stroke=%27%2338bdf8%27/%3E%3Cpath d=%27M5 15c5-5 9-3 12-1s7 2 10-3%27 fill=%27none%27 stroke=%27%23f0b24a%27 stroke-width=%272.2%27/%3E%3Cpath d=%27M5 22h22%27 stroke=%27%23e6edf6%27 stroke-width=%272.2%27/%3E%3C/svg%3E">
   <title>Sand Encroachment Monitoring System</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20261026-ui1">
 </head>
 <body>
+<div class="app">
 
-  <!-- ============ HEADER ============ -->
-  <header class="topbar">
-    <div>
-      <h1>Sand Encroachment Monitoring System</h1>
-      <p class="subtitle">Digital prototype demonstration: simulates the sand-and-road box experiment before the physical hardware is tested.</p>
+  <!-- ============ SIDEBAR NAVIGATION (js/views.js) ============ -->
+  <aside class="sidebar" id="sidebar" aria-label="Dashboard navigation">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="8"/>
+        <path d="M5 21c4-6 8-8 12-6s7 1 10-3" class="bm-dune"/>
+        <path d="M5 25h22" class="bm-road"/>
+      </svg>
+      <div>
+        <strong>Sand Encroachment</strong>
+        <span>Monitoring System · <span class="nowrap">PRO-01</span></span>
+      </div>
     </div>
-    <!-- Shows where data comes from. Never says "connected" unless the backend really is. -->
-    <div class="connection" id="connection" data-state="simulation">
-      <span class="dot"></span>
-      <span id="connection-text">Scenario / Demo: no hardware required</span>
+
+    <nav class="nav" aria-label="Views">
+      <a class="nav-link" href="#overview" data-view="overview">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span>Overview</span>
+      </a>
+      <a class="nav-link" href="#road" data-view="road">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9c3-3 6-3 9 0s6 3 9 0"/><path d="M3 15h18M3 19h18"/><path d="M8 17h2M14 17h2"/></svg>
+        <span>Road Simulation</span>
+        <span class="nav-state" id="nav-run-state" data-status="reset" title="Experiment status"></span>
+      </a>
+      <a class="nav-link" href="#satellite" data-view="satellite">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19l4-4"/><rect x="8" y="8" width="5" height="5" rx="1" transform="rotate(45 10.5 10.5)"/><path d="M13 5l3-3 3 3-3 3zM5 13l-3 3 3 3 3-3z"/><path d="M16 14a4 4 0 0 1 4 4"/></svg>
+        <span>Satellite Monitoring</span>
+      </a>
+      <a class="nav-link" href="#weather" data-view="weather">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg>
+        <span>Weather Monitoring</span>
+      </a>
+      <a class="nav-link" href="#logs" data-view="logs">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span>Experiment Logs</span>
+        <span class="nav-count" id="nav-log-count">0</span>
+      </a>
+    </nav>
+
+    <div class="origin-key">
+      <h4>Data origin</h4>
+      <ul>
+        <li><span class="origin-dot" data-origin="simulated"></span>Simulated scenario</li>
+        <li><span class="origin-dot" data-origin="live"></span>Live Arduino sensor</li>
+        <li><span class="origin-dot" data-origin="satellite"></span>Satellite-derived</li>
+        <li><span class="origin-dot" data-origin="weather"></span>Weather model</li>
+      </ul>
     </div>
-  </header>
+    <p class="sidebar-foot">Detection and monitoring only. No forecasts or AI predictions.</p>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 
-  <!-- Which shared data file is in use, or what is wrong with it -->
-  <div class="data-status" id="data-status" data-state="loading">Loading shared mock data…</div>
-
-  <main class="layout">
-
-    <!-- ============ ROAD SIMULATION (central visual) ============ -->
-    <section class="panel sim-panel" aria-labelledby="sim-title">
-      <div class="panel-head">
-        <h2 id="sim-title">Road simulation</h2>
-        <span class="muted small" id="sim-scenario-note">Scenario / Demo</span>
+  <div class="main">
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+      <button type="button" class="menu-btn" id="btn-menu" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <div class="topbar-title">
+        <h1 id="view-title">Overview</h1>
+        <p class="subtitle" id="view-subtitle">System status at a glance</p>
       </div>
+      <!-- Shows where sensor readings come from. Never says "connected" unless the backend really is. -->
+      <div class="connection" id="connection" data-state="simulation" title="Sensor connection">
+        <span class="dot"></span>
+        <span id="connection-text">Scenario / Demo: no hardware required</span>
+      </div>
+    </header>
 
-      <div class="road-wrap">
-        <svg id="road-svg" viewBox="0 0 800 340" role="img" aria-label="Top view of the prototype box: desert sand above a road, with sand moving onto the road">
-          <defs>
-            <pattern id="sand-grain" width="14" height="14" patternUnits="userSpaceOnUse">
-              <rect width="14" height="14" fill="#d9a35b"/>
-              <circle cx="3" cy="4" r="1" fill="#c48a43"/>
-              <circle cx="10" cy="10" r="1" fill="#e8bd7c"/>
-              <circle cx="11" cy="2" r="0.8" fill="#c48a43"/>
-            </pattern>
-            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#f5e6cc"/>
-            </marker>
-          </defs>
+    <!-- Shown only if part of the page fails to start (script error, missing file) -->
+    <div class="data-status startup-problem" id="startup-problem" data-state="error" role="alert" hidden></div>
 
-          <!-- Strip beside the road: bare soil, with the sand field and shrubs drawn
-               on top by dashboard.js from the satellite sample (distance, vegetation) -->
-          <rect x="0" y="0" width="800" height="120" fill="#a8916f"/>
-          <path id="sand-field" d="" fill="url(#sand-grain)"/>
-          <g id="shrubs"></g>
-          <g id="distance-marker" class="distance-marker">
-            <line id="distance-line" x1="690" y1="0" x2="690" y2="118"/>
-            <text id="distance-label" x="698" y="0" class="svg-label">—</text>
-          </g>
+    <main class="views">
 
-          <!-- Wind direction (animated only while running) -->
-          <g id="wind" class="wind">
-            <line x1="90"  y1="18" x2="90"  y2="70" marker-end="url(#arrow)"/>
-            <line x1="300" y1="18" x2="300" y2="70" marker-end="url(#arrow)"/>
-            <line x1="510" y1="18" x2="510" y2="70" marker-end="url(#arrow)"/>
-            <text x="318" y="40" class="svg-label light" id="wind-label">Wind</text>
-          </g>
+      <!-- =================================================================
+           1. OVERVIEW
+           ================================================================= -->
+      <section class="view" id="view-overview" data-view="overview" aria-label="Overview">
+        <div class="ov-grid">
+          <article class="card ov-card ov-sim">
+            <header class="card-head">
+              <h2>Road simulation</h2>
+              <span class="origin" id="ov-sim-origin" data-origin="simulated">Simulated</span>
+            </header>
+            <div class="ov-readings">
+              <div><span class="kv-label">Sand depth</span><span class="kv-big"><b id="ov-sand">--</b> cm</span></div>
+              <div><span class="kv-label">Wind speed</span><span class="kv-big"><b id="ov-wind">--</b> m/s</span></div>
+            </div>
+            <dl class="kv">
+              <dt>Experiment</dt><dd><span class="status-pill" id="ov-status" data-status="reset">Reset</span></dd>
+              <dt>Mode</dt><dd id="ov-mode">Scenario / Demo</dd>
+              <dt>Scenario</dt><dd id="ov-scenario">—</dd>
+              <dt>Risk label</dt><dd id="ov-risk">—</dd>
+            </dl>
+            <a class="card-link" href="#road">Open road simulation <span aria-hidden="true">→</span></a>
+          </article>
 
-          <!-- Road -->
-          <rect x="0" y="120" width="800" height="130" fill="#2b3036"/>
-          <line x1="0" y1="128" x2="800" y2="128" stroke="#e9e9e9" stroke-width="3"/>
-          <line x1="0" y1="242" x2="800" y2="242" stroke="#e9e9e9" stroke-width="3"/>
-          <line x1="0" y1="185" x2="800" y2="185" stroke="#f2c230" stroke-width="4" stroke-dasharray="34 26"/>
+          <article class="card ov-card">
+            <header class="card-head">
+              <h2>Arduino bridge</h2>
+              <span class="origin" data-origin="live">Live sensor</span>
+            </header>
+            <p class="ov-state"><span class="state-dot" id="ov-bridge-dot" data-state="idle"></span><span id="ov-bridge-text">Not in use: Scenario / Demo mode</span></p>
+            <dl class="kv">
+              <dt>Address</dt><dd id="ov-bridge-url">—</dd>
+              <dt>Last reading</dt><dd id="ov-bridge-last">—</dd>
+            </dl>
+            <p class="muted small">Real readings appear only when <code>python/bridge.py</code> runs with the Arduino connected.</p>
+            <a class="card-link" href="#road">Switch to Live Sensor <span aria-hidden="true">→</span></a>
+          </article>
 
-          <!-- Sand on the road: drawn by dashboard.js from the sand_01 depth (cm) -->
-          <path id="sand-on-road" d="" fill="#c98f4a" stroke="#9c6a2e" stroke-width="2"/>
-          <!-- Original road edge, kept visible above the sand -->
-          <line x1="0" y1="120" x2="800" y2="120" stroke="#ffffff" stroke-width="2" stroke-dasharray="10 8" opacity="0.8"/>
-          <text x="16" y="112" class="svg-label">Road edge</text>
+          <article class="card ov-card">
+            <header class="card-head">
+              <h2>Satellite imagery</h2>
+              <span class="origin" data-origin="satellite">Satellite</span>
+            </header>
+            <div class="ov-stat"><b id="ov-sat-count">—</b><span id="ov-sat-count-label">cached analyses</span></div>
+            <dl class="kv">
+              <dt>Routes</dt><dd id="ov-sat-routes">—</dd>
+              <dt>Shown</dt><dd id="ov-sat-shown">—</dd>
+              <dt>Live analysis</dt><dd>needs <code>satellite_server.py</code></dd>
+            </dl>
+            <a class="card-link" href="#satellite">Open satellite monitoring <span aria-hidden="true">→</span></a>
+          </article>
 
-          <!-- Ground below the road -->
-          <rect x="0" y="250" width="800" height="90" fill="#7b6a52"/>
+          <article class="card ov-card">
+            <header class="card-head">
+              <h2>Weather</h2>
+              <span class="origin" data-origin="weather">Weather model</span>
+            </header>
+            <div class="ov-stat"><b id="ov-wx-count">—</b><span>segment-days cached offline</span></div>
+            <dl class="kv">
+              <dt>Loaded</dt><dd id="ov-wx-loaded">—</dd>
+              <dt>Network</dt><dd id="ov-wx-net">—</dd>
+            </dl>
+            <a class="card-link" href="#weather">Open weather monitoring <span aria-hidden="true">→</span></a>
+          </article>
 
-          <!-- Provisional sensors from the shared data contract (positions illustrative) -->
-          <g id="sensors">
-            <g class="sensor" id="sensor-sand"><circle cx="740" cy="160" r="9"/><text x="672" y="165" class="svg-label">sand_01</text></g>
-            <g class="sensor" id="sensor-wind"><circle cx="770" cy="22" r="9"/><text x="702" y="27" class="svg-label">wind_01</text></g>
-          </g>
+          <article class="card ov-card">
+            <header class="card-head">
+              <h2>Experiment log</h2>
+            </header>
+            <div class="ov-stat"><b id="ov-log-count">0</b><span>readings recorded</span></div>
+            <dl class="kv">
+              <dt>Runs</dt><dd id="ov-log-runs">0</dd>
+              <dt>Last reading</dt><dd id="ov-log-last">—</dd>
+            </dl>
+            <a class="card-link" href="#logs">Open experiment logs <span aria-hidden="true">→</span></a>
+          </article>
 
-          <text x="16" y="296" class="svg-label light">sand_01 depth</text>
-          <text x="16" y="326" class="svg-big" id="svg-coverage">—</text>
-          <text x="784" y="300" class="svg-label light" text-anchor="end">Not to scale · sensor positions illustrative</text>
-          <text x="784" y="326" class="svg-label light" text-anchor="end" id="svg-source-note">Strip above road: sample satellite data</text>
-        </svg>
-
-        <!-- Shown in Live Sensor Mode while no real data is available -->
-        <div class="live-notice" id="live-notice" hidden>
-          <strong id="live-notice-title">Hardware not connected</strong>
-          <p id="live-notice-text">Python/Arduino integration is not configured yet, so no sensor readings are shown.</p>
-          <p class="small">To connect later: run <code>python/bridge.py</code> and set <code>LIVE_BACKEND_URL</code> in <code>js/config.js</code>. See README.</p>
+          <article class="card ov-card ov-checks">
+            <header class="card-head"><h2>System checks</h2></header>
+            <ul class="checks" id="ov-checks"></ul>
+            <!-- Which shared data file is in use, or what is wrong with it -->
+            <div class="data-status" id="data-status" data-state="loading">Loading shared mock data…</div>
+          </article>
         </div>
-      </div>
-    </section>
 
-    <!-- ============ STATUS COLUMN ============ -->
-    <section class="panel status-panel" aria-label="Current readings">
-      <!-- Risk -->
-      <div class="status-block">
-        <h2>Risk level <span class="h2-note" id="risk-basis">(preset scenario label)</span></h2>
-        <div class="risk-pills" id="risk-pills">
-          <span class="risk-pill" data-level="Low">LOW</span>
-          <span class="risk-pill" data-level="Medium">MEDIUM</span>
-          <span class="risk-pill" data-level="High">HIGH</span>
+        <aside class="card note-card">
+          <h2>How to read this dashboard</h2>
+          <p>The <b>road simulation</b> reproduces the sand-and-road box experiment with fixed scenarios or live Arduino readings. <b>Satellite</b> and <b>weather</b> views describe the real research routes (Al-Ahsa – Salwa, Abqaiq – Salasil, Al-Ahsa – Riyadh). They are shown beside the experiment, never mixed into its readings, risk label or log.</p>
+        </aside>
+      </section>
+
+      <!-- =================================================================
+           2. ROAD SIMULATION
+           ================================================================= -->
+      <section class="view" id="view-road" data-view="road" aria-label="Road simulation" hidden>
+        <div class="road-layout">
+          <section class="card sim-panel" aria-labelledby="sim-title">
+            <header class="card-head">
+              <h2 id="sim-title">Prototype road</h2>
+              <div class="sim-head-right">
+                <span class="muted small" id="sim-scenario-note">Scenario / Demo</span>
+                <!-- Where the sensor readings come from: simulated / live Arduino / none -->
+                <span class="source-tag" id="reading-source" data-kind="simulated">Simulated readings</span>
+              </div>
+            </header>
+
+            <div class="road-wrap">
+              <svg id="road-svg" viewBox="0 0 800 340" role="img" aria-label="Top view of the prototype box: desert sand above a road, with sand moving onto the road">
+                <defs>
+                  <pattern id="sand-grain" width="14" height="14" patternUnits="userSpaceOnUse">
+                    <rect width="14" height="14" fill="#d9a35b"/>
+                    <circle cx="3" cy="4" r="1" fill="#c48a43"/>
+                    <circle cx="10" cy="10" r="1" fill="#e8bd7c"/>
+                    <circle cx="11" cy="2" r="0.8" fill="#c48a43"/>
+                  </pattern>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#f5e6cc"/>
+                  </marker>
+                </defs>
+      
+                <!-- Strip beside the road: bare soil, with the sand field and shrubs drawn
+                     on top by dashboard.js from the satellite sample (distance, vegetation) -->
+                <rect x="0" y="0" width="800" height="120" fill="#a8916f"/>
+                <path id="sand-field" d="" fill="url(#sand-grain)"/>
+                <g id="shrubs"></g>
+                <g id="distance-marker" class="distance-marker">
+                  <line id="distance-line" x1="690" y1="0" x2="690" y2="118"/>
+                  <text id="distance-label" x="698" y="0" class="svg-label">—</text>
+                </g>
+      
+                <!-- Wind direction (animated only while running) -->
+                <g id="wind" class="wind">
+                  <line x1="90"  y1="18" x2="90"  y2="70" marker-end="url(#arrow)"/>
+                  <line x1="300" y1="18" x2="300" y2="70" marker-end="url(#arrow)"/>
+                  <line x1="510" y1="18" x2="510" y2="70" marker-end="url(#arrow)"/>
+                  <text x="318" y="40" class="svg-label light" id="wind-label">Wind</text>
+                </g>
+      
+                <!-- Road -->
+                <rect x="0" y="120" width="800" height="130" fill="#2b3036"/>
+                <line x1="0" y1="128" x2="800" y2="128" stroke="#e9e9e9" stroke-width="3"/>
+                <line x1="0" y1="242" x2="800" y2="242" stroke="#e9e9e9" stroke-width="3"/>
+                <line x1="0" y1="185" x2="800" y2="185" stroke="#f2c230" stroke-width="4" stroke-dasharray="34 26"/>
+      
+                <!-- Sand on the road: drawn by dashboard.js from the sand_01 depth (cm) -->
+                <path id="sand-on-road" d="" fill="#c98f4a" stroke="#9c6a2e" stroke-width="2"/>
+                <!-- Original road edge, kept visible above the sand -->
+                <line x1="0" y1="120" x2="800" y2="120" stroke="#ffffff" stroke-width="2" stroke-dasharray="10 8" opacity="0.8"/>
+                <text x="16" y="112" class="svg-label">Road edge</text>
+      
+                <!-- Ground below the road -->
+                <rect x="0" y="250" width="800" height="90" fill="#7b6a52"/>
+      
+                <!-- Provisional sensors from the shared data contract (positions illustrative) -->
+                <g id="sensors">
+                  <g class="sensor" id="sensor-sand"><circle cx="740" cy="160" r="9"/><text x="672" y="165" class="svg-label">sand_01</text></g>
+                  <g class="sensor" id="sensor-wind"><circle cx="770" cy="22" r="9"/><text x="702" y="27" class="svg-label">wind_01</text></g>
+                </g>
+      
+                <text x="16" y="296" class="svg-label light">sand_01 depth</text>
+                <text x="16" y="326" class="svg-big" id="svg-coverage">—</text>
+                <text x="784" y="300" class="svg-label light" text-anchor="end">Not to scale · sensor positions illustrative</text>
+                <text x="784" y="326" class="svg-label light" text-anchor="end" id="svg-source-note">Strip above road: sample satellite data</text>
+              </svg>
+
+              <!-- Shown in Live Sensor Mode while no real data is available -->
+              <div class="live-notice" id="live-notice" hidden>
+                <strong id="live-notice-title">Hardware not connected</strong>
+                <p id="live-notice-text">Python/Arduino integration is not configured yet, so no sensor readings are shown.</p>
+                <p class="small">To connect: plug in the Arduino, run <code>python3 python/bridge.py --port &lt;port&gt;</code>, then press Start. See README section 7.</p>
+              </div>
+            </div>
+
+            <!-- Experiment controls -->
+            <div class="controls" aria-label="Experiment controls">
+              <div class="control-group">
+                <span class="control-label">Sensor mode</span>
+                <div class="segmented" id="mode-toggle" role="radiogroup" aria-label="Sensor mode">
+                  <button type="button" role="radio" data-mode="simulation" aria-checked="true">Scenario / Demo</button>
+                  <button type="button" role="radio" data-mode="live" aria-checked="false">Live Sensor</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <span class="control-label">Scenario</span>
+                <div class="segmented" id="scenario-toggle" role="radiogroup" aria-label="Encroachment scenario">
+                  <!-- Labels are replaced by the scenario labels from shared_mock_data.json -->
+                  <button type="button" role="radio" data-scenario="low" aria-checked="false">Low</button>
+                  <button type="button" role="radio" data-scenario="medium" aria-checked="true">Medium</button>
+                  <button type="button" role="radio" data-scenario="high" aria-checked="false">High</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <span class="control-label">Experiment</span>
+                <div class="buttons">
+                  <button type="button" class="btn btn-start" id="btn-start">&#9654; Start</button>
+                  <button type="button" class="btn btn-stop" id="btn-stop" disabled>&#10073;&#10073; Stop</button>
+                  <button type="button" class="btn btn-reset" id="btn-reset">&#8635; Reset</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <span class="control-label">Status</span>
+                <span class="status-badge" id="status-badge" data-status="reset">Reset</span>
+              </div>
+              <p class="hint" id="hint" aria-live="polite"></p>
+            </div>
+          </section>
+
+          <!-- Current readings -->
+          <section class="card status-panel" aria-label="Current readings">
+            <div class="status-block">
+              <div class="reading-pair">
+                <div class="reading">
+                  <h2>Sand depth <span class="h2-note">sand_01</span></h2>
+                  <div class="big-value"><span id="sand-value">--</span><span class="unit">cm</span></div>
+                </div>
+                <div class="reading">
+                  <h2>Wind speed <span class="h2-note">wind_01</span></h2>
+                  <div class="big-value"><span id="wind-value">--</span><span class="unit">m/s</span></div>
+                </div>
+              </div>
+              <!-- Scenario depth marks are added by dashboard.js from the shared data -->
+              <div class="gauge" id="gauge" aria-hidden="true">
+                <div class="gauge-fill" id="gauge-fill"></div>
+              </div>
+              <div class="gauge-legend" id="gauge-legend"></div>
+            </div>
+
+            <div class="status-block">
+              <h2>Risk level <span class="h2-note" id="risk-basis">(preset scenario label)</span></h2>
+              <div class="risk-pills" id="risk-pills">
+                <span class="risk-pill" data-level="Low">LOW</span>
+                <span class="risk-pill" data-level="Medium">MEDIUM</span>
+                <span class="risk-pill" data-level="High">HIGH</span>
+              </div>
+              <p class="risk-message" id="risk-message">Waiting for the experiment to start.</p>
+            </div>
+
+            <div class="status-block">
+              <h2>Road condition</h2>
+              <p class="condition" id="road-condition">—</p>
+              <p class="muted small" id="road-condition-detail">Press Start to play the selected scenario.</p>
+            </div>
+
+            <p class="disclaimer small" id="status-disclaimer">Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds.</p>
+          </section>
         </div>
-        <p class="risk-message" id="risk-message">Waiting for the experiment to start.</p>
-      </div>
 
-      <!-- Sensor readings (wind_01 + sand_01) -->
-      <div class="status-block">
-        <div class="reading-pair">
-          <div>
-            <h2>Sand depth <span class="h2-note">sand_01</span></h2>
-            <div class="big-value"><span id="sand-value">--</span><span class="unit">cm</span></div>
+        <!-- Reading details (progressive disclosure) -->
+        <details class="card data-panel disclosure">
+          <summary><span id="data-title">Reading details</span><span class="summary-note">timestamps, raw contract fields, data object</span></summary>
+          <div class="disclosure-body">
+            <dl class="data-list">
+              <dt>Received</dt>       <dd id="d-timestamp">—</dd>
+              <dt>Scenario</dt>       <dd id="d-scenario">—</dd>
+              <dt>Risk</dt>           <dd id="d-risk">—</dd>
+              <dt>Operating mode</dt> <dd id="d-mode">Scenario / Demo</dd>
+              <dt>Status</dt>         <dd id="d-status">Reset</dd>
+              <dt>Elapsed</dt>        <dd id="d-elapsed">00:00</dd>
+              <dt>Data origin</dt>    <dd id="d-origin">—</dd>
+              <dt>Field data</dt>     <dd id="d-envsource">—</dd>
+            </dl>
+            <!-- The readings exactly as received (six contract fields) -->
+            <div class="table-wrap">
+              <table class="readings-table">
+                <thead><tr><th>sensor_id</th><th>value</th><th>unit</th><th>source</th><th>status</th><th>timestamp</th></tr></thead>
+                <tbody id="d-readings"><tr class="empty"><td colspan="6">No readings yet.</td></tr></tbody>
+              </table>
+            </div>
+            <details class="json-view">
+              <summary>Current data object (JSON)</summary>
+              <pre id="d-json">{}</pre>
+            </details>
           </div>
-          <div>
-            <h2>Wind speed <span class="h2-note">wind_01</span></h2>
-            <div class="big-value"><span id="wind-value">--</span><span class="unit">m/s</span></div>
+        </details>
+
+        <!-- Field context: sample scenario or a Sentinel-2 analysis + demo indicator -->
+        <section class="card env-panel" aria-labelledby="env-title">
+          <header class="card-head">
+            <h2 id="env-title"><span id="env-title-text">Field data sample</span> <span class="h2-note" id="env-title-note">satellite + weather, future real-world inputs</span></h2>
+            <div class="env-head-right">
+              <div class="segmented segmented-sm" id="env-source-toggle" role="radiogroup" aria-label="Field data source">
+                <button type="button" role="radio" data-env-source="sample" aria-checked="true">Sample scenario</button>
+                <button type="button" role="radio" data-env-source="satellite" aria-checked="false" disabled>Sentinel-2 analysis</button>
+              </div>
+              <span class="sample-badge" id="env-badge" data-kind="sample">Sample data · not real sensor or satellite measurements</span>
+            </div>
+          </header>
+
+          <p class="env-empty" id="env-empty" hidden>No field data sample is shown in Live Sensor Mode. Choose "Sentinel-2 analysis" above to show a real satellite analysis of a road segment. Real weather is in Weather Monitoring.</p>
+
+          <div class="env-grid" id="env-grid">
+            <div class="env-col">
+              <h3>Weather <span class="h2-note" id="e-weather-kind">Simulated · sample scenario</span></h3>
+              <div class="metrics">
+                <div class="metric"><span class="metric-label">Temperature</span><span class="metric-value"><span id="e-temp">—</span><small>°C</small></span></div>
+                <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="e-hum">—</span><small>%</small></span></div>
+                <div class="metric metric-key"><span class="metric-label">Field wind</span><span class="metric-value"><span id="e-wind">—</span><small>m/s</small></span></div>
+              </div>
+              <p class="muted small" id="e-weather-note">Field weather for a real corridor, separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.</p>
+            </div>
+
+            <div class="env-col">
+              <h3>Satellite-derived <span class="h2-note" id="e-source">—</span></h3>
+              <div class="bar-row"><span>Sand coverage</span><div class="bar"><i id="e-sand-bar" class="sand"></i></div><b id="e-sand">—</b></div>
+              <div class="bar-row"><span>Vegetation</span><div class="bar"><i id="e-veg-bar" class="veg"></i></div><b id="e-veg">—</b></div>
+              <div class="bar-row"><span>Bare soil</span><div class="bar"><i id="e-bare-bar" class="bare"></i></div><b id="e-bare">—</b></div>
+              <div class="distance-row">
+                <span id="e-dist-label">Sand front to road</span>
+                <b><span id="e-dist">—</span> m</b>
+              </div>
+              <p class="muted small" id="e-meta">—</p>
+            </div>
+
+            <div class="env-col">
+              <h3>Demo risk indicator</h3>
+              <div class="indicator-head">
+                <span class="tag tag-lg" id="e-level" data-level="">—</span>
+                <span class="indicator-score"><b id="e-score">—</b>/100</span>
+              </div>
+              <ul class="contrib" id="e-contrib"></ul>
+              <p class="small" id="e-explain">—</p>
+              <p class="disclaimer small">Illustrative weighted rule (wind, sand coverage, distance, vegetation). Not a validated model and not the future AI prediction model.</p>
+            </div>
           </div>
-        </div>
-        <!-- Scenario depth marks are added by dashboard.js from the shared data -->
-        <div class="gauge" id="gauge" aria-hidden="true">
-          <div class="gauge-fill" id="gauge-fill"></div>
-        </div>
-        <div class="gauge-legend" id="gauge-legend"></div>
-      </div>
+        </section>
+      </section>
 
-      <!-- Road condition -->
-      <div class="status-block">
-        <h2>Road condition</h2>
-        <p class="condition" id="road-condition">—</p>
-        <p class="muted small" id="road-condition-detail">Press Start to play the selected scenario.</p>
-      </div>
-
-      <p class="disclaimer small">Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds.</p>
-    </section>
-
-    <!-- ============ CONTROLS ============ -->
-    <section class="panel controls" aria-label="Experiment controls">
-      <div class="control-group">
-        <span class="control-label">Sensor mode</span>
-        <div class="segmented" id="mode-toggle" role="radiogroup" aria-label="Sensor mode">
-          <button type="button" role="radio" data-mode="simulation" aria-checked="true">Scenario / Demo</button>
-          <button type="button" role="radio" data-mode="live" aria-checked="false">Live Sensor</button>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label">Scenario</span>
-        <div class="segmented" id="scenario-toggle" role="radiogroup" aria-label="Encroachment scenario">
-          <!-- Labels are replaced by the scenario labels from shared_mock_data.json -->
-          <button type="button" role="radio" data-scenario="low" aria-checked="false">Low</button>
-          <button type="button" role="radio" data-scenario="medium" aria-checked="true">Medium</button>
-          <button type="button" role="radio" data-scenario="high" aria-checked="false">High</button>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label">Experiment</span>
-        <div class="buttons">
-          <button type="button" class="btn btn-start" id="btn-start">&#9654; Start</button>
-          <button type="button" class="btn btn-stop" id="btn-stop" disabled>&#10073;&#10073; Stop</button>
-          <button type="button" class="btn btn-reset" id="btn-reset">&#8635; Reset</button>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <span class="control-label">Status</span>
-        <span class="status-badge" id="status-badge" data-status="reset">Reset</span>
-      </div>
-
-      <p class="hint" id="hint" aria-live="polite"></p>
-    </section>
-
-    <!-- ============ ENVIRONMENTAL & SATELLITE DATA (sample) ============ -->
-    <section class="panel env-panel" aria-labelledby="env-title">
-      <div class="panel-head">
-        <h2 id="env-title">Field data sample <span class="h2-note">satellite + weather, future real-world inputs</span></h2>
-        <span class="sample-badge">Sample data · not real sensor or satellite measurements</span>
-      </div>
-
-      <p class="env-empty" id="env-empty" hidden>No environmental data source is connected in Live Sensor Mode. Satellite and weather integration is not configured yet.</p>
-
-      <div class="env-grid" id="env-grid">
-        <!-- Weather -->
-        <div class="env-col">
-          <h3>Weather</h3>
-          <div class="metrics">
-            <div class="metric"><span class="metric-label">Temperature</span><span class="metric-value"><span id="e-temp">—</span><small>°C</small></span></div>
-            <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="e-hum">—</span><small>%</small></span></div>
-            <div class="metric metric-key"><span class="metric-label">Field wind</span><span class="metric-value"><span id="e-wind">—</span><small>m/s</small></span></div>
+      <!-- =================================================================
+           3. SATELLITE MONITORING (real Sentinel-2, separate from the prototype;
+              logic in js/satellite.js)
+           ================================================================= -->
+      <section class="view sat-panel" id="view-satellite" data-view="satellite" aria-labelledby="sat-title" hidden>
+        <section class="card">
+          <header class="card-head">
+            <h2 id="sat-title">Choose an analysis</h2>
+            <span class="origin" data-origin="satellite">Real Sentinel-2 imagery · not from the prototype</span>
+          </header>
+          <div class="sat-controls">
+            <div class="control-group">
+              <span class="control-label">Image source</span>
+              <div class="segmented" id="sat-source-toggle" role="radiogroup" aria-label="Satellite image source">
+                <button type="button" role="radio" data-source="cache" aria-checked="true">Cached (offline)</button>
+                <button type="button" role="radio" data-source="live" aria-checked="false">Live (Python backend)</button>
+              </div>
+            </div>
+            <label class="control-group step">
+              <span class="control-label"><i class="step-n">1</i>Route</span>
+              <select id="sat-location" class="select"></select>
+            </label>
+            <label class="control-group step" id="sat-segment-group">
+              <span class="control-label"><i class="step-n">2</i>Segment (km along the route)</span>
+              <select id="sat-segment" class="select"></select>
+            </label>
+            <div class="control-group sat-custom" id="sat-custom" hidden>
+              <span class="control-label">Custom point (lat, lon)</span>
+              <span class="sat-latlon">
+                <input type="number" id="sat-lat" class="input" step="0.0001" min="16" max="33" placeholder="24.8860" aria-label="Latitude">
+                <input type="number" id="sat-lon" class="input" step="0.0001" min="34" max="56" placeholder="50.6662" aria-label="Longitude">
+              </span>
+            </div>
+            <label class="control-group step">
+              <span class="control-label"><i class="step-n">3</i>Observation date</span>
+              <select id="sat-date-cached" class="select"></select>
+              <input type="date" id="sat-date-live" class="input" hidden>
+            </label>
+            <label class="control-group" id="sat-buffer-group" hidden>
+              <span class="control-label">Road buffer (m)</span>
+              <input type="number" id="sat-buffer" class="input sat-buffer" min="10" max="2000" step="10" value="200">
+            </label>
+            <div class="control-group">
+              <span class="control-label">&nbsp;</span>
+              <button type="button" class="btn btn-sat" id="btn-sat-analyse">Analyse</button>
+            </div>
           </div>
-          <p class="muted small">Field weather for a real corridor, separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.</p>
+          <p class="sat-selection small" id="sat-selection">—</p>
+          <p class="sat-status" id="sat-status" data-state="idle" aria-live="polite">—</p>
+        </section>
+
+        <div class="sat-body">
+          <section class="card sat-images-card" aria-label="Satellite images">
+            <div class="sat-images">
+              <figure>
+                <img id="sat-img-original" alt="Sentinel-2 true-colour image of the selected route segment">
+                <figcaption><b>Original</b> · true colour (B4, B3, B2)</figcaption>
+              </figure>
+              <figure>
+                <img id="sat-img-overlay" alt="The same image with detected sand highlighted">
+                <figcaption><b>Sand detection</b> · processed</figcaption>
+              </figure>
+            </div>
+            <div class="legends">
+              <span class="legend"><i class="lg-sand"></i>sand</span>
+              <span class="legend"><i class="lg-road"></i>road (KMZ centreline)</span>
+              <span class="legend"><i class="lg-study"></i>2 km study area (segment)</span>
+              <span class="legend"><i class="lg-buffer"></i>road buffer</span>
+              <span class="legend"><i class="lg-excl"></i>cloud / water / no data</span>
+            </div>
+          </section>
+
+          <section class="card sat-results" aria-label="Sand measurements">
+            <h2>Sand coverage</h2>
+            <div class="sat-metrics">
+              <div class="metric metric-key"><span class="metric-label" id="s-area-label">Sand, 2 km study area</span><span class="metric-value"><span id="s-area">—</span><small>%</small></span></div>
+              <div class="metric"><span class="metric-label" id="s-strip-label">Sand in road buffer</span><span class="metric-value"><span id="s-strip">—</span><small>%</small></span></div>
+              <div class="metric"><span class="metric-label">Nearest sand to road</span><span class="metric-value"><span id="s-dist">—</span><small>m</small></span></div>
+            </div>
+            <dl class="kv sat-summary">
+              <dt>Route</dt>       <dd id="s-route">—</dd>
+              <dt>Segment</dt>     <dd id="s-segment">—</dd>
+              <dt>Observation</dt> <dd id="s-scene">—</dd>
+            </dl>
+            <div class="buttons">
+              <button type="button" class="btn btn-ghost" id="btn-sat-use" disabled>Show in road field data</button>
+            </div>
+            <details class="disclosure-inline">
+              <summary>Technical details</summary>
+              <dl class="data-list sat-list">
+                <dt>Analysis area</dt>  <dd id="s-extent">—</dd>
+                <dt>Clear pixels</dt>   <dd id="s-valid">—</dd>
+                <dt>Road geometry</dt>  <dd id="s-road">—</dd>
+                <dt>Provider</dt>       <dd id="s-provider">—</dd>
+                <dt>Processed</dt>      <dd id="s-processed">—</dd>
+              </dl>
+              <p class="small muted">Rule-based detection (colour segmentation, thresholds, texture, morphology) on real Sentinel-2 pixels, not validated in the field. Route centrelines and 2 km study areas come unchanged from the research KMZ files. Percentages are shares of clear pixels in the segment's part of the study area; distance is from the road centreline to the nearest detected sand pixel in it. Contains modified Copernicus Sentinel data.</p>
+            </details>
+          </section>
         </div>
 
-        <!-- Satellite-derived features -->
-        <div class="env-col">
-          <h3>Satellite-derived <span class="h2-note" id="e-source">—</span></h3>
-          <div class="bar-row"><span>Sand coverage</span><div class="bar"><i id="e-sand-bar" class="sand"></i></div><b id="e-sand">—</b></div>
-          <div class="bar-row"><span>Vegetation</span><div class="bar"><i id="e-veg-bar" class="veg"></i></div><b id="e-veg">—</b></div>
-          <div class="bar-row"><span>Bare soil</span><div class="bar"><i id="e-bare-bar" class="bare"></i></div><b id="e-bare">—</b></div>
-          <div class="distance-row">
-            <span>Sand front to road</span>
-            <b><span id="e-dist">—</span> m</b>
+        <aside class="card note-card">
+          <h2>Detection, not prediction</h2>
+          <div class="note-cols">
+            <p><b>What this shows:</b> where sand is visible in one Sentinel-2 image on the chosen date, measured by fixed, explainable rules.</p>
+            <p><b>What it does not do:</b> forecast where sand will move or how risk will change. Prediction is a separate, future phase and is not part of this dashboard.</p>
           </div>
-          <p class="muted small" id="e-meta">—</p>
-        </div>
+        </aside>
+      </section>
 
-        <!-- Demonstration rule -->
-        <div class="env-col">
-          <h3>Demo risk indicator</h3>
-          <div class="indicator-head">
-            <span class="tag tag-lg" id="e-level" data-level="">—</span>
-            <span class="indicator-score"><b id="e-score">—</b>/100</span>
+      <!-- =================================================================
+           4. WEATHER MONITORING (Open-Meteo, js/weather.js)
+           ================================================================= -->
+      <section class="view" id="view-weather" data-view="weather" aria-label="Weather monitoring" hidden>
+        <section class="card wx-block" id="wx-block" aria-labelledby="wx-title">
+          <header class="card-head">
+            <h2 id="wx-title">Research-route weather</h2>
+            <span class="wx-badge" id="wx-badge" data-kind="none">No real weather loaded</span>
+          </header>
+          <div class="sat-controls wx-controls">
+            <label class="control-group step">
+              <span class="control-label"><i class="step-n">1</i>Route</span>
+              <select id="wx-route" class="select"></select>
+            </label>
+            <label class="control-group step">
+              <span class="control-label"><i class="step-n">2</i>Segment (km along the route)</span>
+              <select id="wx-segment" class="select"></select>
+            </label>
+            <label class="control-group step">
+              <span class="control-label"><i class="step-n">3</i>Date</span>
+              <input type="date" id="wx-date" class="input">
+            </label>
+            <label class="control-group">
+              <span class="control-label">Hour (Riyadh)</span>
+              <select id="wx-hour" class="select wx-hour"></select>
+            </label>
+            <div class="control-group wx-buttons">
+              <button type="button" class="btn btn-sat" id="btn-wx-get">Get weather</button>
+              <button type="button" class="btn btn-ghost" id="btn-wx-sat" disabled title="Use the route, segment, date and time of the satellite image shown in Satellite Monitoring">Match satellite image</button>
+              <button type="button" class="btn btn-ghost" id="btn-wx-refresh" title="Ignore the cache and ask Open-Meteo again">Reload</button>
+            </div>
           </div>
-          <ul class="contrib" id="e-contrib"></ul>
-          <p class="small" id="e-explain">—</p>
-          <p class="disclaimer small">Illustrative weighted rule (wind, sand coverage, distance, vegetation). Not a validated model and not the future AI prediction model.</p>
+          <p class="sat-status wx-status" id="wx-status" data-state="idle" role="status" aria-live="polite">Pick a route, segment and date, then press Get weather.</p>
+        </section>
+
+        <div class="wx-body">
+          <section class="card wx-compass-card" aria-label="Wind direction">
+            <h2>Wind direction</h2>
+            <figure class="wx-compass">
+            <svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-labelledby="wx-dir-text">
+              <circle cx="60" cy="60" r="52" class="wx-ring"/>
+              <g class="wx-ticks">
+                <line x1="60" y1="8" x2="60" y2="16"/><line x1="112" y1="60" x2="104" y2="60"/>
+                <line x1="60" y1="112" x2="60" y2="104"/><line x1="8" y1="60" x2="16" y2="60"/>
+              </g>
+              <text x="60" y="28" class="wx-cardinal">N</text><text x="94" y="64" class="wx-cardinal">E</text>
+              <text x="60" y="100" class="wx-cardinal">S</text><text x="26" y="64" class="wx-cardinal">W</text>
+              <!-- Points the way the wind blows TOWARD (north at 0°); rotated by weather.js -->
+              <g id="wx-arrow" visibility="hidden">
+                <line x1="60" y1="88" x2="60" y2="36" class="wx-shaft"/>
+                <path d="M60 26 L69 42 L60 37 L51 42 Z" class="wx-head-arrow"/>
+                <circle cx="60" cy="88" r="4" class="wx-tail"/>
+              </g>
+            </svg>
+              <figcaption id="wx-dir-text">—</figcaption>
+            </figure>
+          </section>
+          <section class="card" aria-label="Weather values">
+            <header class="card-head">
+              <h2>Conditions <span class="h2-note" id="wx-time">—</span></h2>
+              <span class="origin" data-origin="weather">Model-derived · not a sensor</span>
+            </header>
+            <div class="metrics wx-metrics">
+              <div class="metric metric-key"><span class="metric-label">Wind speed (10 m)</span><span class="metric-value"><span id="wx-wind">—</span><small>m/s</small></span></div>
+              <div class="metric"><span class="metric-label">Wind gusts</span><span class="metric-value"><span id="wx-gust">—</span><small>m/s</small></span></div>
+              <div class="metric"><span class="metric-label">Wind direction (from)</span><span class="metric-value"><span id="wx-dir">—</span><small>°</small></span></div>
+              <div class="metric"><span class="metric-label">Temperature (2 m)</span><span class="metric-value"><span id="wx-temp">—</span><small>°C</small></span></div>
+              <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="wx-hum">—</span><small>%</small></span></div>
+              <div class="metric"><span class="metric-label">Precipitation</span><span class="metric-value"><span id="wx-precip">—</span><small>mm</small></span></div>
+            </div>
+            <p class="small wx-daily" id="wx-daily">—</p>
+          </section>
         </div>
-      </div>
-    </section>
 
-    <!-- ============ LIVE DATA PANEL ============ -->
-    <section class="panel data-panel" aria-labelledby="data-title">
-      <h2 id="data-title">Live data</h2>
-      <dl class="data-list">
-        <dt>Received</dt>       <dd id="d-timestamp">—</dd>
-        <dt>Scenario</dt>       <dd id="d-scenario">—</dd>
-        <dt>Risk</dt>           <dd id="d-risk">—</dd>
-        <dt>Operating mode</dt> <dd id="d-mode">Scenario / Demo</dd>
-        <dt>Status</dt>         <dd id="d-status">Reset</dd>
-        <dt>Elapsed</dt>        <dd id="d-elapsed">00:00</dd>
-        <dt>Data origin</dt>    <dd id="d-origin">—</dd>
-        <dt>Field data</dt>     <dd id="d-envsource">—</dd>
-      </dl>
-      <!-- The readings exactly as received (six contract fields) -->
-      <div class="table-wrap">
-        <table class="readings-table">
-          <thead><tr><th>sensor_id</th><th>value</th><th>unit</th><th>source</th><th>status</th><th>timestamp</th></tr></thead>
-          <tbody id="d-readings"><tr class="empty"><td colspan="6">No readings yet.</td></tr></tbody>
-        </table>
-      </div>
-      <details class="json-view">
-        <summary>Current data object (JSON)</summary>
-        <pre id="d-json">{}</pre>
-      </details>
-    </section>
+        <section class="card" aria-label="Wind through the day">
+          <header class="card-head">
+            <h2>Wind through the day</h2>
+            <span class="chart-key"><i class="ck-speed"></i>wind speed <i class="ck-gust"></i>gusts <i class="ck-hour"></i>selected hour</span>
+          </header>
+          <div class="wx-chart" id="wx-chart"><p class="empty-state">Load weather to see the hourly wind.</p></div>
+          <p class="muted small">Arrows show the direction the wind blows toward, every three hours. Click a bar to pick that hour.</p>
+        </section>
 
-    <!-- ============ EXPERIMENT LOG ============ -->
-    <section class="panel log-panel" aria-labelledby="log-title">
-      <div class="panel-head">
-        <h2 id="log-title">Experiment log <span class="muted small" id="log-count">(0 readings)</span></h2>
-        <div class="buttons">
-          <button type="button" class="btn btn-ghost" id="btn-export" disabled>Export CSV</button>
-          <button type="button" class="btn btn-ghost" id="btn-clear-log" disabled>Clear log</button>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Run</th><th>Received</th><th>Scenario</th><th>Sensor</th><th>Value</th><th>Unit</th><th>Source</th><th>Preset risk</th></tr>
-          </thead>
-          <tbody id="log-body">
-            <tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <details class="card disclosure">
+          <summary>Source and location<span class="summary-note">model grid point, data source, separation from the prototype</span></summary>
+          <div class="disclosure-body">
+            <p class="small" id="wx-meta">—</p>
+            <p class="disclaimer small">Real-world weather at the road from Open-Meteo weather models (ERA5 reanalysis for past dates). It is not the Arduino fan or the wind_01 sensor, never drives the prototype, is never written to the experiment log and is not used for any risk level.</p>
+          </div>
+        </details>
+      </section>
 
-  <footer class="footer small">
-    PRO-01 · Digital HTML demo &amp; dashboard · Prototype demonstration only. Live Sensor Mode shows real data only when the Python backend is connected.
-  </footer>
+      <!-- =================================================================
+           5. EXPERIMENT LOGS
+           ================================================================= -->
+      <section class="view log-panel" id="view-logs" data-view="logs" aria-labelledby="log-title" hidden>
+        <section class="card">
+          <header class="card-head">
+            <h2 id="log-title">Experiment history <span class="muted small" id="log-count">(0 readings)</span></h2>
+            <div class="buttons">
+              <button type="button" class="btn btn-ghost" id="btn-export" disabled>Export CSV</button>
+              <button type="button" class="btn btn-ghost" id="btn-clear-log" disabled>Clear log</button>
+            </div>
+          </header>
+          <div class="log-runs" id="log-runs"></div>
+          <div class="log-filters">
+            <label class="control-group">
+              <span class="control-label">Run</span>
+              <select id="log-filter-run" class="select select-sm"><option value="">All runs</option></select>
+            </label>
+            <label class="control-group">
+              <span class="control-label">Sensor</span>
+              <select id="log-filter-sensor" class="select select-sm">
+                <option value="">All sensors</option>
+                <option value="sand_01">sand_01 (cm)</option>
+                <option value="wind_01">wind_01 (m/s)</option>
+              </select>
+            </label>
+            <label class="control-group">
+              <span class="control-label">Source</span>
+              <select id="log-filter-source" class="select select-sm">
+                <option value="">All sources</option>
+                <option value="scenario">Simulated (scenario)</option>
+                <option value="live">Live Arduino</option>
+              </select>
+            </label>
+            <p class="muted small log-shown" id="log-shown"></p>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Run</th><th>Received</th><th>Scenario</th><th>Sensor</th><th>Value</th><th>Unit</th><th>Source</th><th>Preset risk</th></tr>
+              </thead>
+              <tbody id="log-body">
+                <tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted small">The log holds simulated and live Arduino readings only. It is kept in this browser tab until the page is reloaded; Reset keeps it, Clear log empties it. CSV export contains every reading with all contract fields.</p>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer small">
+      PRO-01 · Digital demo &amp; dashboard · Prototype demonstration only.
+    </footer>
+  </div>
+</div>
 
   <!-- Plain scripts (no modules) so the page also works by double-clicking index.html.
-       Order matters: config → logic → data sources → logging → UI → app wiring. -->
-  <script src="js/config.js"></script>
-  <script src="js/risk.js"></script>
-  <script src="js/environmentData.js"></script>
-  <script src="js/environmentRule.js"></script>
-  <script src="js/sharedMockData.js"></script>
-  <script src="js/scenarioData.js"></script>
-  <script src="js/dataSources.js"></script>
-  <script src="js/logger.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/app.js"></script>
+       Order matters: config → logic → data sources → logging → UI → views → app wiring.
+       ?v=… is the release tag: change it whenever a script or the stylesheet
+       changes, so browsers never mix new HTML with old cached scripts. -->
+  <script>
+    // A script that fails to load or parse is reported on the page.
+    window.addEventListener("error", function (e) {
+      var src = e.target && e.target.src ? e.target.src.split("/").slice(-2).join("/") : (e.filename || "").split("/").pop();
+      var msg = e.message ? e.message : "could not be loaded";
+      document.addEventListener("DOMContentLoaded", show); if (document.readyState !== "loading") show();
+      function show() {
+        var box = document.getElementById("startup-problem");
+        if (!box) return;
+        box.hidden = false;
+        box.textContent = (box.textContent ? box.textContent + " " : "Start-up problem: ") + (src || "script") + ": " + msg + ".";
+      }
+    }, true);
+  </script>
+  <script src="js/config.js?v=20261026-ui1"></script>
+  <script src="js/risk.js?v=20261026-ui1"></script>
+  <script src="js/environmentData.js?v=20261026-ui1"></script>
+  <script src="js/environmentRule.js?v=20261026-ui1"></script>
+  <script src="js/sharedMockData.js?v=20261026-ui1"></script>
+  <script src="js/scenarioData.js?v=20261026-ui1"></script>
+  <script src="js/dataSources.js?v=20261026-ui1"></script>
+  <script src="js/logger.js?v=20261026-ui1"></script>
+  <script src="data/satellite/cache_manifest.js"></script>
+  <script src="js/satellite.js?v=20261026-ui1"></script>
+  <script src="data/weather/weather_cache.js"></script>
+  <script src="js/weather.js?v=20261026-ui1"></script>
+  <script src="js/dashboard.js?v=20261026-ui1"></script>
+  <script src="js/views.js?v=20261026-ui1"></script>
+  <script src="js/app.js?v=20261026-ui1"></script>
 </body>
 </html>

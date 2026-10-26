@@ -40,6 +40,16 @@ function initDashboard() {
   drawSandOnRoad(0);
 }
 
+// Start-up problems are shown on the page (not only in the console), so a
+// broken part is visible instead of the page silently not responding.
+function reportStartupProblem(text) {
+  const box = $("startup-problem");
+  if (!box) return;
+  box.hidden = false;
+  box.textContent = box.textContent ? `${box.textContent} ${text}` : `Start-up problem: ${text} ` +
+    "If you updated the files, reload with Cmd+Shift+R (Ctrl+F5) so the browser drops old cached copies.";
+}
+
 // After loading: show which shared file is used, or list its problems.
 function showDataStatus(provider) {
   const box = $("data-status");
@@ -122,6 +132,9 @@ function updateDashboard(sensorData) {
     : sensorData.mode === "live" && hasSand ? "Not classified: no sand_01 thresholds agreed yet."
     : "Press Start to play the selected scenario.";
 
+  // 4b) Where the readings come from (never mixed: switching mode resets)
+  renderReadingSource(sensorData);
+
   // 5) Status
   const badge = $("status-badge");
   badge.dataset.status = sensorData.status;
@@ -166,13 +179,64 @@ function renderReadingsTable(readings) {
 }
 
 /* ---------------------------------------------------------------------
- * Environmental & satellite panel (sample data today).
+ * Reading-source label: simulated (scenario file) vs real Arduino sensors.
+ * Satellite data is never a reading; it has its own section and badge.
  * --------------------------------------------------------------------- */
+function renderReadingSource(data) {
+  const hasReadings = data.readings && data.readings.length > 0;
+  const kind = data.mode === "simulation" ? "simulated" : hasReadings ? "live" : "none";
+  const tag = $("reading-source");
+  if (tag) {
+    tag.dataset.kind = kind;
+    tag.textContent = {
+      simulated: "Simulated readings",
+      live: "Live Arduino readings",
+      none: "Live · no sensor data",
+    }[kind];
+  }
+  setText("status-disclaimer", data.mode === "simulation"
+    ? "Scenario / Demo values are fixed and illustrative, not real sensor readings. Risk levels are preset display labels, not outputs of a trained model or validated thresholds."
+    : "Live Sensor Mode shows only real readings from the Arduino (via python/bridge.py), exactly as received. Risk stays \"Not classified\" until sand_01 thresholds are agreed.");
+}
+
+/* ---------------------------------------------------------------------
+ * Environmental & satellite panel: sample data, or a real Sentinel-2
+ * analysis (js/satellite.js). Missing values are shown as "—".
+ * --------------------------------------------------------------------- */
+const ENV_HEADINGS = {
+  sample: {
+    title: "Field data sample", note: "satellite + weather, future real-world inputs",
+    badge: "Sample data · not real sensor or satellite measurements",
+  },
+  "satellite-derived": {
+    title: "Field data", note: "Sentinel-2 analysis of a real road segment",
+    badge: "Real Sentinel-2 data · satellite-derived, not from the prototype",
+  },
+};
+
+// Sets text only if the element exists (keeps rendering alive if the page
+// and the scripts ever come from different versions).
+function setText(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
+function renderEnvHeading(kind) {
+  const h = ENV_HEADINGS[kind] || ENV_HEADINGS.sample;
+  setText("env-title-text", h.title);
+  setText("env-title-note", h.note);
+  setText("env-badge", h.badge);
+  if ($("env-badge")) $("env-badge").dataset.kind = kind === "satellite-derived" ? "satellite" : "sample";
+}
+
 function renderEnvironment(env, indicator) {
   $("env-empty").hidden = !!env;
   $("env-grid").classList.toggle("is-empty", !env);
-  const set = (id, text) => { $(id).textContent = text; };
-  const bar = (id, pct) => { $(id).style.width = env ? `${pct}%` : "0"; };
+  const set = setText;
+  const show = (v) => (v === null || v === undefined ? "—" : v);
+  const pct = (v) => (v === null || v === undefined ? "—" : `${v}%`);
+  const bar = (id, v) => { $(id).style.width = env && v !== null ? `${v}%` : "0"; };
+  if (env) renderEnvHeading(env.data_kind);
 
   if (!env) {
     ["e-temp", "e-hum", "e-wind", "e-sand", "e-veg", "e-bare", "e-dist", "e-score", "e-level"]
@@ -188,29 +252,47 @@ function renderEnvironment(env, indicator) {
 
   const s = env.satellite;
   const w = env.weather;
-  set("e-temp", w.temperature_c);
-  set("e-hum", w.humidity_pct);
-  set("e-wind", w.wind_speed_mps.toFixed(1));
-  set("e-sand", `${s.sand_coverage_pct}%`);
-  set("e-veg", `${s.vegetation_coverage_pct}%`);
-  set("e-bare", `${s.bare_soil_pct}%`);
+  const real = env.data_kind === "satellite-derived";
+  set("e-temp", show(w.temperature_c));
+  set("e-hum", show(w.humidity_pct));
+  set("e-wind", w.wind_speed_mps === null ? "—" : w.wind_speed_mps.toFixed(1));
+  set("e-weather-kind", real ? "Not part of the satellite analysis" : "Simulated · sample scenario");
+  set("e-weather-note", real
+    ? `Not available here: ${env.weather_note || "Sentinel-2 does not measure weather."} Real Open-Meteo weather for this segment is in Weather Monitoring. The prototype's wind_01 sensor is not used here.`
+    : "Simulated weather from the sample scenario (not real observations), separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.");
+  set("e-sand", pct(s.sand_coverage_pct));
+  set("e-veg", pct(s.vegetation_coverage_pct));
+  set("e-bare", pct(s.bare_soil_pct));
   bar("e-sand-bar", s.sand_coverage_pct);
   bar("e-veg-bar", s.vegetation_coverage_pct);
   bar("e-bare-bar", s.bare_soil_pct);
-  set("e-dist", s.distance_to_road_m);
+  set("e-dist", show(s.distance_to_road_m));
+  set("e-dist-label", real ? "Nearest sand to road centreline" : "Sand front to road");
   set("e-source", `· ${s.source}`);
-  set("e-meta", `Observation ${s.observation_date} · ${s.buffer_m} m strip beside the road · ${env.location}`);
+  set("e-meta", real
+    ? `Scene ${s.scene_id || ""} · ${s.observation_date} · ${s.coverage_basis} · ${env.location}` +
+      (s.distance_to_road_m === null ? ` · Distance not computed: ${s.distance_note}.` : " · Distance from road centreline.")
+    : `Observation ${s.observation_date} · ${s.buffer_m} m strip beside the road · ${env.location}`);
 
-  set("e-score", indicator.score);
-  set("e-level", indicator.level);
-  $("e-level").dataset.level = indicator.level;
+  if (!indicator) {
+    // Satellite-derived values are shown for reference only: no risk score.
+    set("e-score", "—");
+    set("e-level", "Not scored");
+    $("e-level").dataset.level = "";
+    set("e-explain", "The demo indicator is only calculated for the sample scenarios. Satellite-derived values are shown for reference, without a risk score or prediction.");
+    $("e-contrib").innerHTML = "";
+    return;
+  }
+  set("e-score", show(indicator.score));
+  set("e-level", indicator.level ? (indicator.partial ? `${indicator.level} (partial)` : indicator.level) : "—");
+  $("e-level").dataset.level = indicator.level || "";
   set("e-explain", indicator.explanation);
   // Small bars: how many of the 100 points each variable contributes.
   $("e-contrib").innerHTML = indicator.contributions.map((c) => {
     const max = CONFIG.DEMO_RULE[c.key].weight * 100;
     return `<li><span>${c.label}</span>
       <div class="bar"><i style="width:${(c.points / max) * 100}%"></i></div>
-      <b>${c.points.toFixed(0)}/${max}</b></li>`;
+      <b>${c.available ? `${c.points.toFixed(0)}/${max}` : "n/a"}</b></li>`;
   }).join("");
 }
 
@@ -226,8 +308,13 @@ const SHRUB_SLOTS = [
   [430, 0.7], [490, 0.4], [560, 0.6], [620, 0.5], [650, 0.25], [780, 0.7],
 ];
 
-function drawStrip(env) {
-  const edgeY = env ? 118 - (Math.min(env.satellite.distance_to_road_m, 150) / 150) * 100 : 60;
+function drawStrip(fieldData) {
+  // The strip belongs to the road simulation: only the SAMPLE field data may
+  // shape it. A real satellite analysis never changes the simulated road.
+  const env = fieldData && fieldData.data_kind !== "satellite-derived" ? fieldData : null;
+  const satelliteShown = !!fieldData && !env;
+  const dist = env ? env.satellite.distance_to_road_m : null;
+  const edgeY = dist !== null ? 118 - (Math.min(dist, 150) / 150) * 100 : 60;
 
   // Sand field from the top of the box down to its front edge (wavy).
   const pts = [];
@@ -238,7 +325,7 @@ function drawStrip(env) {
   $("sand-field").setAttribute("d", `M0,0 L800,0 ${pts.join(" ")} Z`);
 
   // Shrubs between the sand front and the road.
-  const shrubs = env ? Math.min(SHRUB_SLOTS.length,
+  const shrubs = env && env.satellite.vegetation_coverage_pct !== null ? Math.min(SHRUB_SLOTS.length,
     Math.round((env.satellite.vegetation_coverage_pct / 25) * SHRUB_SLOTS.length)) : 0;
   $("shrubs").innerHTML = SHRUB_SLOTS.slice(0, shrubs).map(([x, f]) => {
     const y = edgeY + (118 - edgeY) * f;
@@ -247,20 +334,21 @@ function drawStrip(env) {
 
   // Distance marker from the sand front to the road edge.
   const marker = $("distance-marker");
-  marker.style.display = env ? "" : "none";
-  if (env) {
+  marker.style.display = dist !== null ? "" : "none";
+  if (dist !== null) {
     $("distance-line").setAttribute("y1", edgeY.toFixed(1));
     const label = $("distance-label");
-    label.textContent = `${env.satellite.distance_to_road_m} m`;
+    label.textContent = `${dist} m`;
     label.setAttribute("y", Math.min(112, Math.max(16, (edgeY + 118) / 2 + 5)).toFixed(1));
   }
 
   // Faster arrows for stronger wind (only animated while running).
-  const wind = env ? env.weather.wind_speed_mps : 5;
+  const fieldWind = env ? env.weather.wind_speed_mps : null;
+  const wind = fieldWind !== null && fieldWind > 0 ? fieldWind : 5;
   $("wind").style.setProperty("--wind-duration", `${Math.max(0.25, 3 / wind).toFixed(2)}s`);
-  $("wind-label").textContent = env ? `Wind ${wind.toFixed(1)} m/s (sample)` : "Wind";
-  $("svg-source-note").textContent = env
-    ? "Strip above road: sample satellite data"
+  $("wind-label").textContent = fieldWind !== null ? `Wind ${fieldWind.toFixed(1)} m/s (sample)` : "Wind";
+  $("svg-source-note").textContent = env ? "Strip above road: sample field data"
+    : satelliteShown ? "Strip above road: not drawn (satellite data has its own section)"
     : "Strip above road: no data source";
 }
 
@@ -329,15 +417,50 @@ function setHint(text) {
 
 function renderLog(logger) {
   $("log-count").textContent = `(${logger.count} reading${logger.count === 1 ? "" : "s"})`;
+  setText("nav-log-count", logger.count > 999 ? "999+" : String(logger.count));
   $("btn-export").disabled = logger.count === 0;
   $("btn-clear-log").disabled = logger.count === 0;
+
+  // Filters (Experiment Logs view). They only change what is shown; the CSV keeps every row.
+  const runs = [...new Set(logger.entries.map((e) => e.run_id))];
+  const runSel = $("log-filter-run");
+  if (runSel) {
+    const keep = runSel.value;
+    const want = ["", ...runs.map(String)];
+    if ([...runSel.options].map((o) => o.value).join() !== want.join()) {
+      runSel.innerHTML = '<option value="">All runs</option>' + runs.map((r) => `<option value="${r}">Run #${r}</option>`).join("");
+    }
+    runSel.value = want.includes(keep) ? keep : "";
+  }
+  const pick = (id) => ($(id) ? $(id).value : "");
+  const f = { run: pick("log-filter-run"), sensor: pick("log-filter-sensor"), source: pick("log-filter-source") };
+  const rows = logger.entries.filter((e) =>
+    (!f.run || String(e.run_id) === f.run) && (!f.sensor || e.sensor_id === f.sensor) && (!f.source || e.source === f.source));
+
+  // One summary chip per run: what was played, how many readings, when.
+  const runsBox = $("log-runs");
+  if (runsBox) {
+    runsBox.innerHTML = runs.map((r) => {
+      const es = logger.entries.filter((e) => e.run_id === r);
+      const scen = [...new Set(es.map((e) => e.scenario_id || "live"))].join(", ");
+      return `<div class="run-chip"><b>Run #${r}</b><span>${scen}</span><span>${es.length} readings · ${formatTime(es[0].received_at)}–${formatTime(es[es.length - 1].received_at)}</span></div>`;
+    }).join("");
+  }
 
   const body = $("log-body");
   if (logger.count === 0) {
     body.innerHTML = '<tr class="empty"><td colspan="8">No readings yet. Press Start to record data.</td></tr>';
+    setText("log-shown", "");
     return;
   }
-  body.innerHTML = logger.latest(CONFIG.LOG_ROWS_VISIBLE).map((e) => `
+  if (rows.length === 0) {
+    body.innerHTML = '<tr class="empty"><td colspan="8">No readings match these filters.</td></tr>';
+    setText("log-shown", `0 of ${logger.count} readings shown`);
+    return;
+  }
+  const shown = rows.slice(-CONFIG.LOG_ROWS_VISIBLE).reverse();
+  setText("log-shown", `${shown.length} of ${logger.count} readings shown, newest first`);
+  body.innerHTML = shown.map((e) => `
     <tr>
       <td>#${e.run_id}</td>
       <td>${formatTime(e.received_at)}</td>
@@ -345,7 +468,7 @@ function renderLog(logger) {
       <td>${e.sensor_id}</td>
       <td>${e.value}</td>
       <td>${e.unit}</td>
-      <td>${e.source}</td>
+      <td><span class="origin origin-sm" data-origin="${e.source === "live" ? "live" : "simulated"}">${e.source}</span></td>
       <td>${e.preset_risk_level ? `<span class="tag" data-level="${displayRisk(e.preset_risk_level)}">${e.preset_risk_level}</span>` : "—"}</td>
     </tr>`).join("");
 }

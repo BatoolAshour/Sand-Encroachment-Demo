@@ -1,0 +1,144 @@
+{
+  "schema": "pro01-satellite-analysis/1.1",
+  "data_kind": "satellite-derived",
+  "disclaimer": "Derived from real Sentinel-2 satellite imagery. Not a measurement from the physical prototype (sand_01 / wind_01). Rule-based detection, not validated in the field.",
+  "location": {
+    "id": "route5_al_ahsa_riyadh_s66",
+    "name": "Route 5: Al-Ahsa \u2013 Riyadh \u00b7 segment 66 of 66",
+    "lat": 24.658264,
+    "lon": 46.710382,
+    "size_m": 8630,
+    "width_m": 5720,
+    "height_m": 8630,
+    "epsg": 32638,
+    "bounds_wgs84": [
+      46.681858,
+      24.61942,
+      46.739424,
+      24.69797
+    ]
+  },
+  "route": {
+    "id": "route5_al_ahsa_riyadh",
+    "number": 5,
+    "name": "Route 5: Al-Ahsa \u2013 Riyadh",
+    "from": "Al-Ahsa",
+    "to": "Riyadh",
+    "length_m": 327642.3,
+    "source_kmz": "data/satellite/routes/source/Al_Ahsa_Riyadh_Route5_2km_Study_Area.kmz",
+    "sha256": "40721a213858f99ba7f020fbebc080e6ba76d71f6c8e556536782e36e7447030",
+    "geojson": "data/satellite/routes/route5_al_ahsa_riyadh.geojson",
+    "study_half_width_m": 2000
+  },
+  "segment": {
+    "id": "route5_al_ahsa_riyadh_s66",
+    "index": 66,
+    "start_m": 322678.0,
+    "end_m": 327642.3,
+    "length_m": 4964.3,
+    "center": [
+      46.710382,
+      24.658264
+    ],
+    "epsg": 32638,
+    "bounds_utm": [
+      670250,
+      2723920,
+      675970,
+      2732550
+    ],
+    "bounds_wgs84": [
+      46.681858,
+      24.61942,
+      46.739424,
+      24.69797
+    ],
+    "width_m": 5720,
+    "height_m": 8630,
+    "count": 66
+  },
+  "analysis_area": {
+    "basis": "segment part of the 2 km study area (KMZ)",
+    "study_half_width_m": 2000,
+    "road_buffer_m": 200,
+    "image_km": [
+      5.72,
+      8.63
+    ]
+  },
+  "requested_date": "2026-10-20",
+  "scene": {
+    "id": "S2B_38RPN_20261021_0_L2A",
+    "date": "2026-10-21",
+    "datetime": "2026-10-21T07:42:54.064000Z",
+    "tile_cloud_pct": 11.48,
+    "collection": "Sentinel-2 Level-2A (surface reflectance)",
+    "resolution_m": 10,
+    "provider": "AWS Open Data (Sentinel-2 L2A COGs, Element 84)",
+    "mosaic_tiles": [],
+    "attribution": "Contains modified Copernicus Sentinel data 2026"
+  },
+  "road": {
+    "available": true,
+    "method": "kmz",
+    "source": "Route centreline from Al_Ahsa_Riyadh_Route5_2km_Study_Area.kmz (unchanged KMZ coordinates)",
+    "note": null
+  },
+  "measurements": {
+    "area_km2": 25.83,
+    "image_km2": 49.36,
+    "valid_pct": 100.0,
+    "cloud_pct": 0.0,
+    "area_sand_coverage_pct": 1.8,
+    "area_vegetation_pct": 17.4,
+    "area_other_bare_pct": 34.1,
+    "buffer_m": 200,
+    "sand_coverage_pct": 1.0,
+    "vegetation_coverage_pct": 17.9,
+    "bare_soil_pct": 36.6,
+    "distance_to_road_m": 0,
+    "strip_valid_pixels": 20722,
+    "sand_within_20m_of_centreline_px": 34
+  },
+  "processing": {
+    "version": "1.1",
+    "processed_at": "2026-10-25T17:58:56Z",
+    "steps": [
+      "analysis area: segment part of the KMZ 2 km study area (pixels nearer to this segment than to the rest of the route); road = KMZ centreline",
+      "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
+      "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
+      "thresholding: Bare Soil Index > 0, NDVI < 0.15, brightness above asphalt/shadow",
+      "texture analysis: local standard deviation (5 x 5 px) must be low",
+      "morphology: opening, closing, removal of patches and holes < 0.25 ha"
+    ],
+    "parameters": {
+      "sand_hue_deg": [
+        8.0,
+        48.0
+      ],
+      "saturation_bounds": [
+        0.45,
+        0.65
+      ],
+      "min_brightness": 0.15,
+      "min_bsi": 0.0,
+      "max_ndvi_sand": 0.15,
+      "vegetation_ndvi": 0.25,
+      "texture_window_px": 5,
+      "max_texture": 0.015,
+      "min_patch_px": 25,
+      "buffer_m": 200
+    },
+    "diagnostics": {
+      "saturation_threshold": 0.479,
+      "saturation_threshold_method": "Otsu",
+      "candidate_pixels": 8689,
+      "after_morphology_pixels": 8404,
+      "texture_rejected_pixels": 97543
+    }
+  },
+  "images": {
+    "original": "data/satellite/cache/route5_al_ahsa_riyadh_s66/2026-10-21/original.jpg",
+    "overlay": "data/satellite/cache/route5_al_ahsa_riyadh_s66/2026-10-21/overlay.jpg"
+  }
+}

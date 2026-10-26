@@ -1,0 +1,144 @@
+{
+  "schema": "pro01-satellite-analysis/1.1",
+  "data_kind": "satellite-derived",
+  "disclaimer": "Derived from real Sentinel-2 satellite imagery. Not a measurement from the physical prototype (sand_01 / wind_01). Rule-based detection, not validated in the field.",
+  "location": {
+    "id": "route4_abqaiq_salasil_s09",
+    "name": "Route 4: Abqaiq \u2013 Salasil \u00b7 segment 9 of 9",
+    "lat": 26.092191,
+    "lon": 49.43812,
+    "size_m": 8730,
+    "width_m": 5710,
+    "height_m": 8730,
+    "epsg": 32639,
+    "bounds_wgs84": [
+      49.412157,
+      26.054816,
+      49.470281,
+      26.134233
+    ]
+  },
+  "route": {
+    "id": "route4_abqaiq_salasil",
+    "number": 4,
+    "name": "Route 4: Abqaiq \u2013 Salasil",
+    "from": "Abqaiq",
+    "to": "Salasil",
+    "length_m": 46190.5,
+    "source_kmz": "data/satellite/routes/source/Abqaiq_Salasil_Route4_2km_Study_Area.kmz",
+    "sha256": "5a81976f83a06f46dc62c5aea7c668cd2f7eafacc25cb28cce22018c00311e77",
+    "geojson": "data/satellite/routes/route4_abqaiq_salasil.geojson",
+    "study_half_width_m": 2000
+  },
+  "segment": {
+    "id": "route4_abqaiq_salasil_s09",
+    "index": 9,
+    "start_m": 41058.2,
+    "end_m": 46190.5,
+    "length_m": 5132.3,
+    "center": [
+      49.43812,
+      26.092191
+    ],
+    "epsg": 32639,
+    "bounds_utm": [
+      341260,
+      2882720,
+      346970,
+      2891450
+    ],
+    "bounds_wgs84": [
+      49.412157,
+      26.054816,
+      49.470281,
+      26.134233
+    ],
+    "width_m": 5710,
+    "height_m": 8730,
+    "count": 9
+  },
+  "analysis_area": {
+    "basis": "segment part of the 2 km study area (KMZ)",
+    "study_half_width_m": 2000,
+    "road_buffer_m": 200,
+    "image_km": [
+      5.71,
+      8.73
+    ]
+  },
+  "requested_date": "2026-10-20",
+  "scene": {
+    "id": "S2B_39RUJ_20261018_0_L2A",
+    "date": "2026-10-18",
+    "datetime": "2026-10-18T07:32:32.755000Z",
+    "tile_cloud_pct": 0.01,
+    "collection": "Sentinel-2 Level-2A (surface reflectance)",
+    "resolution_m": 10,
+    "provider": "AWS Open Data (Sentinel-2 L2A COGs, Element 84)",
+    "mosaic_tiles": [],
+    "attribution": "Contains modified Copernicus Sentinel data 2026"
+  },
+  "road": {
+    "available": true,
+    "method": "kmz",
+    "source": "Route centreline from Abqaiq_Salasil_Route4_2km_Study_Area.kmz (unchanged KMZ coordinates)",
+    "note": null
+  },
+  "measurements": {
+    "area_km2": 25.68,
+    "image_km2": 49.85,
+    "valid_pct": 100.0,
+    "cloud_pct": 0.0,
+    "area_sand_coverage_pct": 43.8,
+    "area_vegetation_pct": 8.7,
+    "area_other_bare_pct": 31.0,
+    "buffer_m": 200,
+    "sand_coverage_pct": 8.9,
+    "vegetation_coverage_pct": 27.3,
+    "bare_soil_pct": 41.0,
+    "distance_to_road_m": 40,
+    "strip_valid_pixels": 21196,
+    "sand_within_20m_of_centreline_px": 0
+  },
+  "processing": {
+    "version": "1.1",
+    "processed_at": "2026-10-25T17:58:17Z",
+    "steps": [
+      "analysis area: segment part of the KMZ 2 km study area (pixels nearer to this segment than to the rest of the route); road = KMZ centreline",
+      "valid pixels from the Scene Classification Layer (clouds, shadow, cirrus, water, no-data removed)",
+      "colour segmentation in HSV (sand hue range, Otsu saturation threshold)",
+      "thresholding: Bare Soil Index > 0, NDVI < 0.15, brightness above asphalt/shadow",
+      "texture analysis: local standard deviation (5 x 5 px) must be low",
+      "morphology: opening, closing, removal of patches and holes < 0.25 ha"
+    ],
+    "parameters": {
+      "sand_hue_deg": [
+        8.0,
+        48.0
+      ],
+      "saturation_bounds": [
+        0.45,
+        0.65
+      ],
+      "min_brightness": 0.15,
+      "min_bsi": 0.0,
+      "max_ndvi_sand": 0.15,
+      "vegetation_ndvi": 0.25,
+      "texture_window_px": 5,
+      "max_texture": 0.015,
+      "min_patch_px": 25,
+      "buffer_m": 200
+    },
+    "diagnostics": {
+      "saturation_threshold": 0.626,
+      "saturation_threshold_method": "Otsu",
+      "candidate_pixels": 285900,
+      "after_morphology_pixels": 292874,
+      "texture_rejected_pixels": 18503
+    }
+  },
+  "images": {
+    "original": "data/satellite/cache/route4_abqaiq_salasil_s09/2026-10-18/original.jpg",
+    "overlay": "data/satellite/cache/route4_abqaiq_salasil_s09/2026-10-18/overlay.jpg"
+  }
+}

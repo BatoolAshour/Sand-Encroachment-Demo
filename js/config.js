@@ -32,10 +32,45 @@ const CONFIG = {
   /* -------------------------------------------------------------------
    * [PYTHON / ARDUINO INTEGRATION POINT]
    * WebSocket address for Live Sensor Mode (see python/bridge.py).
-   * While null, Live mode shows "not configured" and never invents readings.
-   * Example when ready:  "ws://localhost:8765"
+   * Default: the address python/bridge.py listens on. Live mode shows
+   * "Hardware not connected" until the bridge runs, and never invents readings.
+   * Set to null to switch Live Sensor Mode off completely.
    * ------------------------------------------------------------------- */
-  LIVE_BACKEND_URL: null,
+  LIVE_BACKEND_URL: "ws://localhost:8765",   // python/bridge.py default; null = Live mode off
+
+  // Live connection behaviour (never invents readings):
+  LIVE_RECONNECT_ATTEMPTS: 3,        // after a lost connection, while running
+  LIVE_RECONNECT_DELAY_MS: 2000,
+  LIVE_STALE_AFTER_MS: 10000,        // warn when connected but no reading for this long
+
+  /* -------------------------------------------------------------------
+   * [SATELLITE INTEGRATION POINT] Satellite Monitoring section.
+   * Real Sentinel-2 analyses, kept apart from the prototype's sensors.
+   *   - Cached (offline): data/satellite/cache_manifest.js, no server needed.
+   *   - Live: python/satellite_server.py at this address
+   *     (Copernicus Data Space Ecosystem, or the public AWS archive).
+   * ------------------------------------------------------------------- */
+  SATELLITE_API_BASE: "http://localhost:8780",
+  SATELLITE_DEFAULT_SOURCE: "cache",        // "cache" | "live"
+  SATELLITE_REQUEST_TIMEOUT_MS: 180000,     // a live analysis downloads imagery
+  SATELLITE_ROAD_BUFFER_M: 200,            // live analysis: extra measurement strip beside the road (10–2000 m)
+
+  /* -------------------------------------------------------------------
+   * [WEATHER INTEGRATION POINT] Real weather for the research routes
+   * (js/weather.js), called straight from the browser. No API key.
+   *   - Historical (ERA5 / ERA5-Land) for dates at least
+   *     WEATHER_ARCHIVE_MIN_AGE_DAYS old; newer past days use the forecast
+   *     API's own analysis; today uses its "current" block.
+   *   - Offline: data/weather/weather_cache.js (python/weather_cache.py)
+   *     and this browser's local storage.
+   * Kept apart from the Arduino fan and the wind_01 sensor.
+   * ------------------------------------------------------------------- */
+  OPEN_METEO_ARCHIVE_URL: "https://archive-api.open-meteo.com/v1/archive",
+  OPEN_METEO_FORECAST_URL: "https://api.open-meteo.com/v1/forecast",
+  WEATHER_TIMEZONE: "Asia/Riyadh",          // routes' local time (UTC+3)
+  WEATHER_ARCHIVE_MIN_AGE_DAYS: 6,          // the archive runs about 5 days behind
+  WEATHER_REQUEST_TIMEOUT_MS: 20000,
+  WEATHER_DEFAULT_HOUR: 10,                 // local hour shown first (Sentinel-2 passes about 10:20)
 
   // Drawing / gauge scale only: this sand_01 depth fills the road picture.
   SAND_DEPTH_DISPLAY_MAX_CM: 6,
@@ -83,6 +118,6 @@ const CONFIG = {
     vegetation_coverage_pct: { weight: 0.15, low: 30,  high: 0,  label: "Low vegetation" },
   },
 
-  // Number of rows shown in the on-screen log table (the CSV keeps all rows).
-  LOG_ROWS_VISIBLE: 8,
+  // Rows shown in the Experiment Logs table, newest first (the CSV keeps all rows).
+  LOG_ROWS_VISIBLE: 500,
 };

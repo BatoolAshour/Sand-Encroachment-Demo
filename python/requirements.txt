@@ -1,2 +1,12 @@
+# Live Sensor Mode bridge (bridge.py)
 pyserial>=3.5
 websockets>=12.0
+
+# Satellite Monitoring (satellite_server.py, satellite_cache.py)
+numpy>=1.24
+scipy>=1.10
+rasterio>=1.3      # Intel Mac before macOS 15: pip install "rasterio==1.4.3" first (prebuilt wheel)
+Pillow>=10.0
+requests>=2.31
+flask>=3.0
+mgrs>=1.4.6

@@ -18,7 +18,9 @@ const state = {
   receivedAt: null,                 // when the last readings arrived
   scenarioMeta: null,               // { scenario_id, label, risk_level } of the last delivery
   readings: {},                     // latest contract reading per sensor_id
-  environment: null,                // field data sample (see environmentData.js)
+  environment: null,                // field data record (see environmentData.js)
+  envSource: "sample",              // "sample" (scenario) | "satellite" (real Sentinel-2 analysis)
+  satelliteEnv: null,               // last Sentinel-2 analysis as a field data record
   dataReady: false,                 // shared mock data loaded and valid
 };
 
@@ -71,7 +73,9 @@ function buildSensorData() {
     road_condition: condition ? condition.label : null,
     elapsed_s: elapsedSeconds(),
     environment: state.environment,                                  // field data sample, or null
-    environmental_indicator: assessEnvironmentalIndicator(state.environment), // demo rule only
+    // Demo rule for the SAMPLE field data only; no score is made from real satellite data.
+    environmental_indicator: state.environment && state.environment.data_kind === "sample"
+      ? assessEnvironmentalIndicator(state.environment) : null,
   };
 }
 
@@ -93,16 +97,37 @@ function toLogEntries(data) {
 }
 
 
-// ---------- Field data sample (satellite + weather) ----------
+// ---------- Field data (sample scenario or real Sentinel-2 analysis) ----------
 // Single entry point for environment records from ANY provider
-// (sample today; satellite pipeline, weather data or Python backend later).
+// (sample scenarios, the Sentinel-2 pipeline, later weather data).
 function applyEnvironmentData(raw) {
   state.environment = raw ? normalizeEnvironmentData(raw) : null;
   refresh();
 }
 
+// Sample data follows the selected scenario. A Sentinel-2 analysis does not:
+// it describes a real road, independent of the Low/Medium/High experiment.
 function loadScenarioEnvironment() {
+  if (state.envSource === "satellite") {
+    applyEnvironmentData(state.satelliteEnv);
+    return;
+  }
   applyEnvironmentData(state.mode === "simulation" ? environmentProvider.load(state.scenario) : null);
+}
+
+function setEnvSource(source) {
+  if (source === "satellite" && !state.satelliteEnv) return;
+  state.envSource = source;
+  loadScenarioEnvironment();
+}
+
+// Called by the Satellite Monitoring section with each shown analysis.
+function handleSatelliteResult(record) {
+  state.satelliteEnv = record;
+  if (state.envSource === "satellite") loadScenarioEnvironment();
+  else updateControls();
+  // Lets the real-weather block offer the same route, segment and date.
+  if (typeof WeatherPanel !== "undefined") WeatherPanel.satelliteChanged();
 }
 
 function refresh() {
@@ -139,6 +164,13 @@ function handleConnection(connState, message) {
   }
   if (state.mode !== "live") return;
 
+  if (connState === "stale") {
+    // Still connected, but the Arduino has gone quiet: keep the last values, warn clearly.
+    setConnectionIndicator("connecting", "Live: connected, no readings");
+    setHint(message);
+    return;
+  }
+
   setConnectionIndicator(connState, `Live: ${{
     not_configured: "not configured",
     connecting: "connecting…",
@@ -148,6 +180,7 @@ function handleConnection(connState, message) {
 
   if (connState === "connected") {
     showLiveNotice(Object.keys(state.readings).length === 0, "Backend connected", message);
+    setHint("");
   } else if (connState === "connecting") {
     showLiveNotice(true, "Connecting…", message);
   } else {
@@ -228,7 +261,7 @@ function showLiveNoticeForIdleLive() {
   if (sources.live.isConfigured()) {
     setConnectionIndicator("disconnected", "Live: not connected");
     showLiveNotice(true, "Hardware not connected",
-      `Backend address set to ${CONFIG.LIVE_BACKEND_URL}. Press Start to connect to the Python backend.`);
+      `Waiting for the Arduino. Run python/bridge.py (address ${CONFIG.LIVE_BACKEND_URL}), then press Start. No readings are shown until real data arrives.`);
   } else {
     setConnectionIndicator("not_configured", "Live: not configured");
     showLiveNotice(true, "Hardware not connected",
@@ -270,6 +303,10 @@ function updateControls() {
     b.setAttribute("aria-checked", String(b.dataset.scenario === state.scenario));
     b.disabled = state.mode !== "simulation" || !state.dataReady;
   });
+  document.querySelectorAll("#env-source-toggle button").forEach((b) => {
+    b.setAttribute("aria-checked", String(b.dataset.envSource === state.envSource));
+    if (b.dataset.envSource === "satellite") b.disabled = !state.satelliteEnv;
+  });
   const sc = SharedFileScenarioProvider.list().find((s) => s.scenario_id === state.scenario);
   $("sim-scenario-note").textContent = state.mode === "simulation"
     ? `Scenario / Demo: ${sc ? sc.label : "—"}`
@@ -278,18 +315,31 @@ function updateControls() {
 
 
 // ---------- Wire up the page ----------
-document.addEventListener("DOMContentLoaded", async () => {
-  initDashboard();
+// Each part is wired on its own (startStep), so a failure in one optional
+// part (e.g. the satellite section, or a file the browser served from an old
+// cache) can never leave the core experiment controls without listeners.
+function startStep(name, fn) {
+  try {
+    fn();
+    return true;
+  } catch (err) {
+    console.error(`Dashboard start-up: ${name} failed`, err);
+    reportStartupProblem(`${name} could not start (${err.message}).`);
+    return false;
+  }
+}
 
+function wireExperimentControls() {
   $("btn-start").addEventListener("click", startExperiment);
   $("btn-stop").addEventListener("click", stopExperiment);
   $("btn-reset").addEventListener("click", resetExperiment);
-
   document.querySelectorAll("#mode-toggle button").forEach((b) =>
     b.addEventListener("click", () => setMode(b.dataset.mode)));
   document.querySelectorAll("#scenario-toggle button").forEach((b) =>
     b.addEventListener("click", () => setScenario(b.dataset.scenario)));
+}
 
+function wireLogControls() {
   $("btn-export").addEventListener("click", () => {
     if (!logger.downloadCSV()) setHint("Nothing to export yet.");
   });
@@ -297,6 +347,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     logger.clear();
     renderLog(logger);
   });
+}
+
+// Satellite Monitoring is optional: without it the rest of the page still works.
+function startSatelliteMonitoring() {
+  document.querySelectorAll("#env-source-toggle button").forEach((b) =>
+    b.addEventListener("click", () => setEnvSource(b.dataset.envSource)));
+  const use = $("btn-sat-use");
+  if (use) {
+    use.addEventListener("click", () => {
+      setEnvSource("satellite");
+      $("env-title").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  SatelliteMonitor.init({ onResult: handleSatelliteResult });
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  startStep("Road drawing", initDashboard);
+  startStep("Experiment controls", wireExperimentControls);
+  startStep("Experiment log", wireLogControls);
 
   // Refresh the elapsed time every second while running (readings may be slower).
   setInterval(() => {
@@ -304,14 +374,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   }, 1000);
 
   // Load the shared mock data before anything can be played.
-  state.dataReady = await SharedFileScenarioProvider.load();
-  showDataStatus(SharedFileScenarioProvider);
-  if (state.dataReady) {
-    labelScenarioButtons(SharedFileScenarioProvider.list());
-    setHint(scenarioSummary(state.scenario));
+  try {
+    state.dataReady = await SharedFileScenarioProvider.load();
+  } catch (err) {
+    console.error("Shared mock data could not be loaded", err);
+    state.dataReady = false;
   }
+  startStep("Data status", () => {
+    showDataStatus(SharedFileScenarioProvider);
+    if (state.dataReady) {
+      labelScenarioButtons(SharedFileScenarioProvider.list());
+      setHint(scenarioSummary(state.scenario));
+    }
+  });
 
   sources.simulation.setScenario(state.scenario);
-  loadScenarioEnvironment();
-  renderLog(logger);
+  startStep("Field data", loadScenarioEnvironment);
+  startStep("Experiment log", () => renderLog(logger));
+
+  // Real Sentinel-2 section: shows the cached analyses at once (no network).
+  startStep("Satellite monitoring", startSatelliteMonitoring);
+  // Real Open-Meteo weather: only cached data at start-up, network on request.
+  startStep("Real weather", () => WeatherPanel.init());
+  startStep("Controls", refresh);   // buttons reflect the final state even if a step above failed
 });

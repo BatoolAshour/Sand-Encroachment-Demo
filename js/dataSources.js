@@ -103,6 +103,12 @@ class LiveSensorSource {
     this.onReading = onReading;
     this.onConnection = onConnection;
     this.socket = null;
+    this.running = false;          // Start pressed and not stopped/reset
+    this.reconnects = 0;
+    this.reconnectTimer = null;
+    this.watchdog = null;
+    this.lastReadingAt = 0;
+    this.staleReported = false;
   }
 
   isConfigured() {
@@ -116,29 +122,49 @@ class LiveSensorSource {
         "Python/Arduino integration is not configured yet. No sensor data is available.");
       return false;
     }
+    this.running = true;
+    this.reconnects = 0;
     if (this.socket && this.socket.readyState <= WebSocket.OPEN) {
       this.sendCommand("start");
+      this.startWatchdog();
       return true;
     }
+    return this.connect();
+  }
 
-    this.onConnection("connecting", `Connecting to ${CONFIG.LIVE_BACKEND_URL} …`);
+  connect() {
+    this.onConnection("connecting", this.reconnects
+      ? `Connection lost. Reconnecting to ${CONFIG.LIVE_BACKEND_URL} (attempt ${this.reconnects} of ${CONFIG.LIVE_RECONNECT_ATTEMPTS})…`
+      : `Connecting to ${CONFIG.LIVE_BACKEND_URL} …`);
+    let socket;
     try {
-      this.socket = new WebSocket(CONFIG.LIVE_BACKEND_URL);
+      socket = new WebSocket(CONFIG.LIVE_BACKEND_URL);
     } catch (err) {
+      this.running = false;
       this.onConnection("disconnected", `Invalid backend address: ${err.message}`);
       return false;
     }
+    this.socket = socket;
 
     let wasOpen = false;
-    this.socket.onopen = () => {
+    socket.onopen = () => {
       wasOpen = true;
+      this.reconnects = 0;
       this.onConnection("connected", "Python backend connected. Waiting for sensor readings…");
-      this.sendCommand("start");
+      if (this.running) {
+        this.sendCommand("start");
+        this.startWatchdog();
+      }
     };
 
-    this.socket.onmessage = (event) => {
+    socket.onmessage = (event) => {
       const readings = LiveSensorSource.parseMessage(event.data);
       if (readings) {
+        this.lastReadingAt = Date.now();
+        if (this.staleReported) {
+          this.staleReported = false;
+          this.onConnection("connected", "Sensor readings are arriving again.");
+        }
         this.onReading({ received_at: new Date().toISOString(), scenario: null, readings });
       } else {
         console.warn("Ignored invalid message from backend:", event.data);
@@ -146,21 +172,61 @@ class LiveSensorSource {
     };
 
     // A failed connection fires "error" and then "close"; we report once, on close.
-    this.socket.onclose = () => {
+    socket.onclose = () => {
+      if (this.socket !== socket) return;   // an older socket we already replaced
       this.socket = null;
+      this.stopWatchdog();
+      // Lost while running: try again a few times before giving up.
+      if ((wasOpen || this.reconnects > 0) && this.running && this.reconnects < CONFIG.LIVE_RECONNECT_ATTEMPTS) {
+        this.reconnects += 1;
+        this.onConnection("connecting",
+          `Connection to the Python backend was lost. Reconnecting (attempt ${this.reconnects} of ${CONFIG.LIVE_RECONNECT_ATTEMPTS})…`);
+        this.reconnectTimer = setTimeout(() => { if (this.running) this.connect(); }, CONFIG.LIVE_RECONNECT_DELAY_MS);
+        return;
+      }
+      const wasReconnecting = this.reconnects > 0;
+      this.running = false;
       this.onConnection("disconnected", wasOpen
         ? "Connection to the Python backend was closed."
-        : `Could not reach the Python backend at ${CONFIG.LIVE_BACKEND_URL}. Is bridge.py running?`);
+        : wasReconnecting
+          ? `Could not reconnect to the Python backend at ${CONFIG.LIVE_BACKEND_URL}. Is bridge.py still running?`
+          : `Could not reach the Python backend at ${CONFIG.LIVE_BACKEND_URL}. Is bridge.py running?`);
     };
     return true;
   }
 
+  // Connected but silent for too long: say so (the Arduino may be unplugged).
+  startWatchdog() {
+    this.stopWatchdog();
+    this.lastReadingAt = Date.now();
+    this.staleReported = false;
+    this.watchdog = setInterval(() => {
+      const silent = Date.now() - this.lastReadingAt;
+      if (!this.staleReported && silent > CONFIG.LIVE_STALE_AFTER_MS) {
+        this.staleReported = true;
+        this.onConnection("stale", `Connected, but no sensor readings for ${Math.round(silent / 1000)} s. ` +
+          "Check the Arduino cable, the serial port given to bridge.py and the sketch output.");
+      }
+    }, 1000);
+  }
+
+  stopWatchdog() {
+    clearInterval(this.watchdog);
+    this.watchdog = null;
+  }
+
   stop() {
+    this.running = false;
+    clearTimeout(this.reconnectTimer);
+    this.stopWatchdog();
     this.sendCommand("stop");
     // The socket stays open so Start can resume without reconnecting.
   }
 
   reset() {
+    this.running = false;
+    clearTimeout(this.reconnectTimer);
+    this.stopWatchdog();
     this.sendCommand("reset");
     if (this.socket) {
       this.socket.onclose = null; // closing on purpose: no "disconnected" warning
