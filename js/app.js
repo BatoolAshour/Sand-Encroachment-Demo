@@ -126,6 +126,8 @@ function handleSatelliteResult(record) {
   state.satelliteEnv = record;
   if (state.envSource === "satellite") loadScenarioEnvironment();
   else updateControls();
+  // Lets the real-weather block offer the same route, segment and date.
+  if (typeof WeatherPanel !== "undefined") WeatherPanel.satelliteChanged();
 }
 
 function refresh() {
@@ -392,5 +394,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Real Sentinel-2 section: shows the cached analyses at once (no network).
   startStep("Satellite monitoring", startSatelliteMonitoring);
+  // Real Open-Meteo weather: only cached data at start-up, network on request.
+  startStep("Real weather", () => WeatherPanel.init());
   startStep("Controls", refresh);   // buttons reflect the final state even if a step above failed
 });

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sand Encroachment Monitoring System</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261025-4">
+  <link rel="stylesheet" href="css/styles.css?v=20261025-5">
 </head>
 <body>
 
@@ -200,12 +200,12 @@
         </div>
       </div>
 
-      <p class="env-empty" id="env-empty" hidden>No field data sample is shown in Live Sensor Mode, and no weather source is connected. Choose "Sentinel-2 analysis" above to show a real satellite analysis of a road segment.</p>
+      <p class="env-empty" id="env-empty" hidden>No field data sample is shown in Live Sensor Mode. Choose "Sentinel-2 analysis" above to show a real satellite analysis of a road segment. Real weather (Open-Meteo, below) works in every mode.</p>
 
       <div class="env-grid" id="env-grid">
         <!-- Weather -->
         <div class="env-col">
-          <h3>Weather</h3>
+          <h3>Weather <span class="h2-note" id="e-weather-kind">Simulated · sample scenario</span></h3>
           <div class="metrics">
             <div class="metric"><span class="metric-label">Temperature</span><span class="metric-value"><span id="e-temp">—</span><small>°C</small></span></div>
             <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="e-hum">—</span><small>%</small></span></div>
@@ -238,6 +238,70 @@
           <p class="small" id="e-explain">—</p>
           <p class="disclaimer small">Illustrative weighted rule (wind, sand coverage, distance, vegetation). Not a validated model and not the future AI prediction model.</p>
         </div>
+      </div>
+
+      <!-- Real weather (Open-Meteo), kept apart from the Arduino fan and sensors -->
+      <div class="wx-block" id="wx-block" aria-labelledby="wx-title">
+        <div class="wx-head">
+          <h3 id="wx-title">Real weather <span class="h2-note">Open-Meteo · research routes</span></h3>
+          <span class="wx-badge" id="wx-badge" data-kind="none">No real weather loaded</span>
+        </div>
+        <div class="sat-controls wx-controls">
+          <label class="control-group">
+            <span class="control-label">Route</span>
+            <select id="wx-route" class="select"></select>
+          </label>
+          <label class="control-group">
+            <span class="control-label">Segment (km along the route)</span>
+            <select id="wx-segment" class="select"></select>
+          </label>
+          <label class="control-group">
+            <span class="control-label">Observation date</span>
+            <input type="date" id="wx-date" class="input">
+          </label>
+          <label class="control-group">
+            <span class="control-label">Hour (Riyadh time)</span>
+            <select id="wx-hour" class="select wx-hour"></select>
+          </label>
+          <div class="control-group wx-buttons">
+            <button type="button" class="btn btn-sat" id="btn-wx-get">Get weather</button>
+            <button type="button" class="btn btn-ghost" id="btn-wx-refresh" title="Ignore the cache and ask Open-Meteo again">Reload from Open-Meteo</button>
+            <button type="button" class="btn btn-ghost" id="btn-wx-sat" disabled title="Use the route, segment, date and time of the satellite image shown in Satellite Monitoring">Match satellite image</button>
+          </div>
+        </div>
+        <p class="sat-status wx-status" id="wx-status" data-state="idle" role="status" aria-live="polite">Pick a route, segment and date, then press Get weather.</p>
+        <div class="wx-body">
+          <figure class="wx-compass">
+            <svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-labelledby="wx-dir-text">
+              <circle cx="60" cy="60" r="52" class="wx-ring"/>
+              <g class="wx-ticks">
+                <line x1="60" y1="8" x2="60" y2="16"/><line x1="112" y1="60" x2="104" y2="60"/>
+                <line x1="60" y1="112" x2="60" y2="104"/><line x1="8" y1="60" x2="16" y2="60"/>
+              </g>
+              <text x="60" y="28" class="wx-cardinal">N</text><text x="94" y="64" class="wx-cardinal">E</text>
+              <text x="60" y="100" class="wx-cardinal">S</text><text x="26" y="64" class="wx-cardinal">W</text>
+              <!-- Points the way the wind blows TOWARD (north at 0°); rotated by weather.js -->
+              <g id="wx-arrow" visibility="hidden">
+                <line x1="60" y1="88" x2="60" y2="36" class="wx-shaft"/>
+                <path d="M60 26 L69 42 L60 37 L51 42 Z" class="wx-head-arrow"/>
+                <circle cx="60" cy="88" r="4" class="wx-tail"/>
+              </g>
+            </svg>
+            <figcaption class="small" id="wx-dir-text">—</figcaption>
+          </figure>
+          <div class="metrics wx-metrics">
+            <div class="metric metric-key"><span class="metric-label">Wind speed (10 m)</span><span class="metric-value"><span id="wx-wind">—</span><small>m/s</small></span></div>
+            <div class="metric"><span class="metric-label">Wind gusts</span><span class="metric-value"><span id="wx-gust">—</span><small>m/s</small></span></div>
+            <div class="metric"><span class="metric-label">Wind direction (from)</span><span class="metric-value"><span id="wx-dir">—</span><small>°</small></span></div>
+            <div class="metric"><span class="metric-label">Temperature (2 m)</span><span class="metric-value"><span id="wx-temp">—</span><small>°C</small></span></div>
+            <div class="metric"><span class="metric-label">Rel. humidity</span><span class="metric-value"><span id="wx-hum">—</span><small>%</small></span></div>
+            <div class="metric"><span class="metric-label">Precipitation</span><span class="metric-value"><span id="wx-precip">—</span><small>mm</small></span></div>
+          </div>
+        </div>
+        <p class="small"><b id="wx-time">—</b></p>
+        <p class="small" id="wx-daily">—</p>
+        <p class="muted small" id="wx-meta">—</p>
+        <p class="disclaimer small">Real-world weather at the road, not the Arduino fan or the wind_01 sensor. It never drives the prototype, is never written to the experiment log and is not used for any risk level.</p>
       </div>
     </section>
 
@@ -403,17 +467,19 @@
       }
     }, true);
   </script>
-  <script src="js/config.js?v=20261025-4"></script>
-  <script src="js/risk.js?v=20261025-4"></script>
-  <script src="js/environmentData.js?v=20261025-4"></script>
-  <script src="js/environmentRule.js?v=20261025-4"></script>
-  <script src="js/sharedMockData.js?v=20261025-4"></script>
-  <script src="js/scenarioData.js?v=20261025-4"></script>
-  <script src="js/dataSources.js?v=20261025-4"></script>
-  <script src="js/logger.js?v=20261025-4"></script>
+  <script src="js/config.js?v=20261025-5"></script>
+  <script src="js/risk.js?v=20261025-5"></script>
+  <script src="js/environmentData.js?v=20261025-5"></script>
+  <script src="js/environmentRule.js?v=20261025-5"></script>
+  <script src="js/sharedMockData.js?v=20261025-5"></script>
+  <script src="js/scenarioData.js?v=20261025-5"></script>
+  <script src="js/dataSources.js?v=20261025-5"></script>
+  <script src="js/logger.js?v=20261025-5"></script>
   <script src="data/satellite/cache_manifest.js"></script>
-  <script src="js/satellite.js?v=20261025-4"></script>
-  <script src="js/dashboard.js?v=20261025-4"></script>
-  <script src="js/app.js?v=20261025-4"></script>
+  <script src="js/satellite.js?v=20261025-5"></script>
+  <script src="data/weather/weather_cache.js"></script>
+  <script src="js/weather.js?v=20261025-5"></script>
+  <script src="js/dashboard.js?v=20261025-5"></script>
+  <script src="js/app.js?v=20261025-5"></script>
 </body>
 </html>

@@ -256,9 +256,10 @@ function renderEnvironment(env, indicator) {
   set("e-temp", show(w.temperature_c));
   set("e-hum", show(w.humidity_pct));
   set("e-wind", w.wind_speed_mps === null ? "—" : w.wind_speed_mps.toFixed(1));
+  set("e-weather-kind", real ? "Not part of the satellite analysis" : "Simulated · sample scenario");
   set("e-weather-note", real
-    ? `Not available: ${env.weather_note || "no weather source connected."} The prototype's wind_01 sensor is not used here.`
-    : "Field weather for a real corridor, separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.");
+    ? `Not available here: ${env.weather_note || "Sentinel-2 does not measure weather."} Real Open-Meteo weather for this segment is in "Real weather" below. The prototype's wind_01 sensor is not used here.`
+    : "Simulated weather from the sample scenario (not real observations), separate from the prototype's wind_01 sensor. Temperature and humidity are context only; the demo rule does not use them.");
   set("e-sand", pct(s.sand_coverage_pct));
   set("e-veg", pct(s.vegetation_coverage_pct));
   set("e-bare", pct(s.bare_soil_pct));

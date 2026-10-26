@@ -105,7 +105,7 @@ function satelliteResultToEnvironment(result) {
       distance_note: m.distance_to_road_m === null ? (m.distance_to_road_m_reason || "not available") : null,
     },
     weather: { temperature_c: null, humidity_pct: null, wind_speed_mps: null },
-    weather_note: "Sentinel-2 does not measure weather and no weather source is connected.",
+    weather_note: "Sentinel-2 does not measure weather.",
   };
 }
 

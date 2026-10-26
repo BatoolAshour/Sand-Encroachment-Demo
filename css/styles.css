@@ -402,3 +402,34 @@ tr.empty td { color: var(--muted); text-align: center; padding: 22px; }
   .segmented button { padding: 8px 10px; }
   .live-notice { position: static; margin-top: 12px; }
 }
+
+/* ---------- Real weather (Open-Meteo) inside the field data panel ---------- */
+.wx-block { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.wx-block p { margin: 0; }
+.wx-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.wx-head h3 { margin: 0; }
+.wx-badge {
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
+  padding: 4px 10px; border-radius: 999px;
+  color: var(--muted); border: 1px solid var(--border);
+}
+.wx-badge[data-kind="historical"], .wx-badge[data-kind="historical-cached"] { color: #4fc3f7; border-color: #4fc3f7; background: rgba(79,195,247,0.10); }
+.wx-badge[data-kind="current"], .wx-badge[data-kind="current-cached"] { color: var(--low); border-color: var(--low); background: rgba(47,179,107,0.12); }
+.wx-badge[data-kind$="-cached"] { border-style: dashed; }
+.wx-hour { min-width: 7em; }
+.wx-buttons { flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wx-status { margin: 0; }
+.wx-status[data-state="warn"] { color: var(--medium); }
+.wx-body { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; align-items: center; }
+.wx-compass { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: var(--muted); }
+.wx-ring { fill: var(--panel-2); stroke: var(--border); stroke-width: 2; }
+.wx-ticks line { stroke: var(--muted); stroke-width: 2; }
+.wx-cardinal { fill: var(--muted); font-size: 11px; font-weight: 700; text-anchor: middle; }
+.wx-shaft { stroke: #4fc3f7; stroke-width: 4; stroke-linecap: round; }
+.wx-head-arrow { fill: #4fc3f7; }
+.wx-tail { fill: none; stroke: #4fc3f7; stroke-width: 2; }
+.wx-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 700px) {
+  .wx-body { grid-template-columns: 1fr; }
+  .wx-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

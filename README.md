@@ -4,7 +4,8 @@ A browser dashboard for the physical prototype (a road inside a box with sand, a
 and sensors). It plays fixed demo scenarios from the team's **shared mock data** file and is
 ready to show real Arduino readings. A separate **Satellite Monitoring** section analyses
 real Sentinel-2 images of the team's three **research routes** (Routes 3, 4 and 5, from the
-KMZ study-area files) for sand cover (section 10).
+KMZ study-area files) for sand cover (section 10), and the Field data panel shows **real
+weather** for the same road segments from Open-Meteo (section 11).
 
 ## Current scope
 
@@ -13,15 +14,18 @@ KMZ study-area files) for sand cover (section 10).
 | **Road simulation** (Low / Medium / High) | Included | **Main feature.** Animated road, readings, preset risk label, log, CSV. |
 | **Live Arduino mode** | Included, ready for hardware | Same road view fed by real `sand_01` / `wind_01` readings via `python/bridge.py` → WebSocket. |
 | **Satellite Monitoring** (Sentinel-2) | Included, optional | **Supporting view** at the bottom of the page. Real images of the research routes (KMZ), kept separate from the prototype. |
+| **Real weather** (Open-Meteo) | Included, optional | Historical / current wind, gusts, direction, temperature, humidity and rain at a route segment, inside the Field data panel. Kept apart from the Arduino fan and sensors. |
 | Machine learning / future prediction | **Not included** | A separate future phase. No model, forecast or prediction algorithm is in this dashboard. |
 
 Rules this version follows:
-- Satellite values are **never** turned into Arduino sensor readings, never drawn on the road
+- Satellite and weather values are **never** turned into Arduino sensor readings, never drawn on the road
   simulation and never feed the risk label or the demo indicator.
 - Every value is labelled by origin: **Simulated readings** (Scenario / Demo), **Live Arduino
-  readings** (bridge connected) or **Real Sentinel-2 … satellite-derived** (satellite section).
+  readings** (bridge connected), **Real Sentinel-2 … satellite-derived** (satellite section),
+  **Historical / Current · Open-Meteo** (real weather) or **Simulated · sample scenario**
+  (the sample weather cards).
 - The page keeps working when the Arduino, the bridge or the satellite backend is not there:
-  Scenario / Demo and the cached satellite images need nothing but the browser.
+  Scenario / Demo, the cached satellite images and cached weather need nothing but the browser.
 - The "demo risk indicator" in the Field data panel is an illustrative weighted rule for the
   sample scenarios only. It is not a prediction and is not calculated for satellite data.
 
@@ -50,7 +54,9 @@ If the buttons do not respond after updating the files, reload with **Cmd+Shift+
 named in a red line under the title instead of failing silently.
 
 No internet or backend is needed either way: the Satellite Monitoring section shows the
-**cached** real Sentinel-2 analyses in `data/satellite/` offline.
+**cached** real Sentinel-2 analyses in `data/satellite/` offline. **Real weather** is fetched
+from Open-Meteo by the browser when you press *Get weather* (internet needed, no key); weather
+fetched once, or cached with `python3 python/weather_cache.py`, also works offline (section 11).
 
 **Live Arduino readings (when the hardware is plugged in):**
 ```bash
@@ -83,6 +89,7 @@ See section 10 for Copernicus credentials and the offline cache.
 │   ├── environmentData.js     Field data SAMPLE (satellite + weather) + record checks
 │   ├── environmentRule.js     Demo multi-variable indicator + explanation
 │   ├── satellite.js           Satellite Monitoring section (cached + live Sentinel-2)
+│   ├── weather.js             Real weather (Open-Meteo): requests, cache, labels, weather block
 │   ├── logger.js              Experiment log + CSV export
 │   ├── dashboard.js           Drawing: updateDashboard(sensorData) and helpers
 │   └── app.js                 State + button logic; connects everything
@@ -92,8 +99,9 @@ See section 10 for Copernicus credentials and the offline cache.
 │   ├── satellite_server.py    Flask API for live Sentinel-2 analysis (port 8780)
 │   ├── satellite_cache.py     Command line: pre-cache analyses for offline demos
 │   ├── import_routes.py       KMZ research routes → GeoJSON + segments (routes.json)
+│   ├── weather_cache.py       Command line: cache real Open-Meteo weather for offline demos
 │   ├── satellite/             providers (CDSE, AWS), processing, routes, roads, analysis, cache
-│   ├── tests/                 Offline unit tests for the satellite pipeline
+│   ├── tests/                 Offline unit tests (satellite pipeline, weather cache)
 │   └── requirements.txt
 └── data/
     ├── shared_mock_data.json          CANONICAL shared mock data v1.0 (unchanged)
@@ -107,6 +115,8 @@ See section 10 for Copernicus credentials and the offline cache.
         ├── routes.json                GENERATED: routes, validation report, segments
         ├── cache/<segment>/<date>/    original.jpg, overlay.jpg, result.json (real analyses)
         └── cache_manifest.js          GENERATED list of cached analyses (works offline)
+    └── weather/
+        └── weather_cache.js           GENERATED cached Open-Meteo answers (works offline)
 ```
 
 ### How the files work together
@@ -124,8 +134,13 @@ See section 10 for Copernicus credentials and the offline cache.
                                   └─► satellite.js ─► Satellite Monitoring section
                                            └─► applyEnvironmentData() ─► Field data panel
                                                (only when "Sentinel-2 analysis" is selected)
+
+ Open-Meteo ─► weather.js (browser fetch, or weather_cache.js / local storage)
+                                  │   point = segment centre from routes.json (KMZ)
+                                  └─► "Real weather" block in the Field data panel
 ```
-The satellite path never touches the sensor readings, the risk pills or the experiment log.
+The satellite and weather paths never touch the sensor readings, the fan, the risk pills or the
+experiment log.
 
 ---
 
@@ -210,8 +225,10 @@ The panel has a source switch:
 | **Sentinel-2 analysis** | The analysis currently shown in Satellite Monitoring (section 10). It stays put when the scenario changes. | "Real Sentinel-2 data · satellite-derived, not from the prototype" (blue) |
 
 The second option unlocks once an analysis is shown (cached analyses load at start), or with
-**Use in Field data panel**. With Sentinel-2 the weather cards show "—": the satellite does not
-measure weather, no weather service is connected, and the prototype's `wind_01` is not used.
+**Use in Field data panel**. With Sentinel-2 the three weather cards in the grid show "—" (the
+satellite does not measure weather and `wind_01` is not used) and point to the **Real weather**
+block underneath, which shows Open-Meteo weather for the same segment and date (section 11).
+With the sample scenario those cards are labelled **Simulated · sample scenario**.
 
 With Sentinel-2 selected the demo indicator shows **Not scored**: satellite values are shown for
 reference only, without a risk score. The strip above the road in the simulation is drawn only
@@ -328,8 +345,8 @@ applyEnvironmentData(record)   // validates with normalizeEnvironmentData(), the
 `SampleEnvironmentProvider.load(scenarioKey)` supplies the sample record. Sentinel-2 analyses
 are converted to the same schema by `satelliteResultToEnvironment()` in `js/satellite.js`
 (`data_source: "sentinel-2"`, `data_kind: "satellite-derived"`, unknown values `null`).
-Still open:
-- **Weather:** observations or historical data (e.g. ERA5-Land) for the same date and place.
+Real weather is now its own block (section 11) and is deliberately **not** merged into the
+environment record, so it can never reach the demo indicator. Still open:
 - **Python backend:** send the record as a JSON message over the existing WebSocket.
 
 Search the code for **`[FUTURE DATA INTEGRATION POINT]`** and **`[SATELLITE INTEGRATION POINT]`**.
@@ -405,6 +422,27 @@ Search the code for **`[PYTHON INTEGRATION POINT`** and **`[FUTURE DATA INTEGRAT
 ---
 
 ## 8. What was tested
+
+Real weather, tested on 26 Oct 2026 (Chromium + Python 3):
+- `python -m unittest discover -s tests` (in `python/`): 24 offline tests, all pass. New for
+  `weather_cache.py` (Open-Meteo mocked): request uses the KMZ segment centre, m/s and Riyadh
+  time; ≥ 6-day-old dates use the archive, recent ones the forecast API's past-date analysis,
+  an empty archive falls back to it; today and future dates refused; network errors reported;
+  an answer for another place rejected; default targets = the cached satellite images; cache
+  file round trip.
+- Browser (`file://`, `http.server`, `satellite_server.py`), Open-Meteo **mocked** with
+  test responses: three routes / 31 · 9 · 66 segments / 24 hours; no request at start-up;
+  *Match satellite image* picks route, segment, scene date and scene hour (07:22 UTC → 10:00);
+  six values and the compass arrow for the chosen hour; hour change without a new request;
+  cache reuse and *Reload*; labels Historical (ERA5), Historical (recent), Current (with
+  "today so far", no forecast hours), offline cache (this browser / shipped); future date
+  refused; API error and offline messages; loading state; shipped cache used offline; missing
+  cache file tolerated; Arduino / scenario wind, log and "Not scored" unchanged; no horizontal
+  scroll at 390 px.
+- Existing tests re-run: controls, research-route UI (incl. a live Sentinel-2 analysis) and the
+  live-bridge test all pass.
+- **Not tested against the real Open-Meteo service**: the test machines' network blocks
+  `open-meteo.com`. The first real request is the one you make (section 11).
 
 Research routes, tested on 25 Oct 2026 (Chromium + Python 3):
 - `python -m unittest discover -s tests` (in `python/`): 15 offline tests. New: every centreline
@@ -487,6 +525,8 @@ Tested in Chromium on 23 Oct 2026:
   from `wind_01` on purpose. The demo rule's weights are not calibrated.
 - The browser log is cleared when the page is refreshed.
 - No machine learning, AI map or prediction model is included. That is a separate future phase.
+- Real weather is modelled data for a ~10–25 km grid cell (ERA5 / weather models), not a
+  measurement at the road; see section 11.
 - Satellite sand detection is rule-based and not validated against field data; see
   "Limitations" in section 10.
 
@@ -667,4 +707,63 @@ distance are `null` with `distance_to_road_m_reason`.
 - Distance is measured to the centreline, not the paved edge (road width is not known).
 - 10 m pixels cannot see a thin sand film on asphalt; the result describes sand around the road.
 - The scene is the nearest clear one to the chosen date (the date used is always shown).
-- No weather data is attached to satellite results.
+- No weather data is stored in satellite results; the Real weather block (section 11) shows it
+  next to them.
+
+---
+
+## 11. Real weather (Open-Meteo)
+
+The **Real weather** block at the bottom of the Field data panel shows real-world weather at a
+research-route segment. It never drives the fan, the road animation or `wind_01`, is never
+written to the experiment log and is not used by any risk label or indicator.
+
+**Using it:** choose *Route*, *Segment* and *Observation date* (and *Hour*, Riyadh time), then
+**Get weather**. **Match satellite image** copies the route, segment, scene date and scene hour of
+the image shown in Satellite Monitoring. **Reload from Open-Meteo** skips the cache.
+
+| Shown | Open-Meteo variable (10 m wind, 2 m air) |
+|---|---|
+| Wind speed / gusts (m/s) | `wind_speed_10m`, `wind_gusts_10m` (`wind_speed_unit=ms`) |
+| Wind direction (° the wind comes **from**) + compass | `wind_direction_10m`; the arrow points where the wind blows **to** |
+| Temperature (°C), relative humidity (%) | `temperature_2m`, `relative_humidity_2m` |
+| Precipitation (mm) | `precipitation` (total over the preceding hour; 15 min for "Current") |
+| Day summary | daily max / min, rain total, dominant direction |
+
+**Where the numbers come from (and the label you see):**
+
+| Date | Source | Label |
+|---|---|---|
+| 6 days ago or older | `archive-api.open-meteo.com` — ERA5 / ERA5-Land reanalysis | **Historical · ERA5 / ERA5-Land** |
+| 1–5 days ago (or archive not out yet) | `api.open-meteo.com` with that past date — the models' own analysis | **Historical (recent)** |
+| Today | `api.open-meteo.com` `current` block (updated every 15 min); the day summary covers only the hours so far | **Current** |
+| Future | refused — forecasts are predictions and out of scope | — |
+| From a cache | as above, plus "offline cache (this browser / shipped with the dashboard, fetched …)" | dashed badge |
+
+The point asked for is the **centre of the chosen segment** from `data/satellite/routes.json`
+(KMZ import). Open-Meteo answers for its model grid cell; the panel shows both positions and
+says "Modelled for the grid cell, not a weather-station reading". Times are local (Asia/Riyadh,
+UTC+3); Sentinel-2 passes about 10:20 local.
+
+**Offline / cache.** Checked in this order: this browser's local storage (every successful
+fetch is kept), then `data/weather/weather_cache.js`. When Open-Meteo cannot be reached, a cached
+copy is shown with a warning; with nothing cached the panel says so and shows no numbers. Fill
+the shipped cache before a demo (internet needed):
+```bash
+python3 python/weather_cache.py                     # weather for every cached satellite image
+python3 python/weather_cache.py --route route4_abqaiq_salasil --date 2026-10-18
+python3 python/weather_cache.py --route route3_al_ahsa_salwa --segments 1,16,30 --date 2026-10-20
+python3 python/weather_cache.py --list
+```
+Only the standard library is used. Raw Open-Meteo answers are stored unchanged; segments with
+cached weather are marked "· cached" in the segment list.
+
+**Settings** (`js/config.js`, `[WEATHER INTEGRATION POINT]`): API URLs, time zone, archive age
+(6 days), request timeout, default hour.
+
+**Limitations**
+- Reanalysis and model values describe a grid cell (ERA5 ≈ 25 km, ERA5-Land ≈ 9 km), not the
+  exact road; local gusts and sand-lifting winds can be stronger.
+- Not checked against weather-station data.
+- Open-Meteo's free API is for non-commercial use, with daily request limits. Weather data by
+  Open-Meteo.com (CC BY 4.0), ERA5 / ERA5-Land from Copernicus Climate Change Service.
